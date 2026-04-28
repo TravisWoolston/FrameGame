@@ -42,6 +42,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 120}
 --- !u!1971053207 &781993350059082986
 SpriteShapeRenderer:
+  serializedVersion: 2
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -57,6 +58,11 @@ SpriteShapeRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 0
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -79,11 +85,12 @@ SpriteShapeRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
-  m_Color: {r: 1, g: 1, b: 1, a: 0.5176471}
   m_MaskInteraction: 0
+  m_Color: {r: 1, g: 1, b: 1, a: 0.5176471}
   m_ShapeTexture: {fileID: 2800000, guid: b281b91a70a624a0da1c43adc1c30c7b, type: 3}
   m_Sprites:
   - {fileID: 21300000, guid: 0ae2b74b1edd14bb18dd7b65ae916a54, type: 3}
@@ -156,6 +163,7 @@ MonoBehaviour:
   m_ShadowDetail: 16
   m_ShadowOffset: 0.5
   m_BoundsScale: 2
+  m_UpdateGeometry: 1
   m_Creator: {fileID: 0}
   m_Modifiers: []
   m_ColliderSegment: []
@@ -208,7 +216,7 @@ BoxCollider2D:
   m_EdgeRadius: 0
 --- !u!50 &9192161565123534109
 Rigidbody2D:
-  serializedVersion: 4
+  serializedVersion: 5
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -219,8 +227,8 @@ Rigidbody2D:
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
   m_Mass: 40
-  m_LinearDrag: 0
-  m_AngularDrag: 0.05
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
   m_GravityScale: 1
   m_Material: {fileID: 0}
   m_IncludeLayers:
@@ -267,11 +275,11 @@ HingeJoint2D:
   m_UseMotor: 0
   m_Motor:
     m_MotorSpeed: 0
-    m_MaximumMotorForce: 10000
-  m_UseLimits: 1
+    m_MaximumMotorForce: 5000
+  m_UseLimits: 0
   m_AngleLimits:
-    m_LowerAngle: -108.7
-    m_UpperAngle: 157.3
+    m_LowerAngle: -107.32
+    m_UpperAngle: 103.6
 --- !u!114 &4753343579599109222
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -299,7 +307,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   hingeJoint: {fileID: 1531342828944539938}
-  rotationSpeed: 150
+  rotationSpeed: 25
   left: 0
   right: 0
   selected: 0
@@ -313,12 +321,11 @@ MonoBehaviour:
   lastInput: 0
   targetRotationRef: 0
   rb: {fileID: 0}
-  sfa: {fileID: 8903061086721225643}
+  sfa: {fileID: 0}
   useLimits: 0
   min: 0
   max: 0
   motorSpeed: 0
-  maxTorque: 5000
 --- !u!114 &5719634500623433952
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -368,6 +375,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 90}
 --- !u!212 &6929438944186338130
 SpriteRenderer:
+  serializedVersion: 2
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -383,6 +391,11 @@ SpriteRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 0
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -404,9 +417,11 @@ SpriteRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
+  m_MaskInteraction: 0
   m_Sprite: {fileID: -9095717837082945937, guid: 207ee8102dd4143d288186ef0be518ee, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 0.5176471}
   m_FlipX: 0
@@ -416,11 +431,10 @@ SpriteRenderer:
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
-  m_MaskInteraction: 0
   m_SpriteSortPoint: 0
 --- !u!50 &6562073623463247092
 Rigidbody2D:
-  serializedVersion: 4
+  serializedVersion: 5
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -431,8 +445,8 @@ Rigidbody2D:
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
   m_Mass: 10
-  m_LinearDrag: 0
-  m_AngularDrag: 0.05
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
   m_GravityScale: 1
   m_Material: {fileID: 0}
   m_IncludeLayers:
@@ -488,6 +502,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 60}
 --- !u!1971053207 &7943167434033552597
 SpriteShapeRenderer:
+  serializedVersion: 2
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -503,6 +518,11 @@ SpriteShapeRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 0
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -525,11 +545,12 @@ SpriteShapeRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
-  m_Color: {r: 1, g: 1, b: 1, a: 0.5176471}
   m_MaskInteraction: 0
+  m_Color: {r: 1, g: 1, b: 1, a: 0.5176471}
   m_ShapeTexture: {fileID: 2800000, guid: b281b91a70a624a0da1c43adc1c30c7b, type: 3}
   m_Sprites:
   - {fileID: 21300000, guid: 0ae2b74b1edd14bb18dd7b65ae916a54, type: 3}
@@ -602,6 +623,7 @@ MonoBehaviour:
   m_ShadowDetail: 16
   m_ShadowOffset: 0.5
   m_BoundsScale: 2
+  m_UpdateGeometry: 1
   m_Creator: {fileID: 0}
   m_Modifiers: []
   m_ColliderSegment: []
@@ -654,7 +676,7 @@ BoxCollider2D:
   m_EdgeRadius: 0
 --- !u!50 &1797286828495295814
 Rigidbody2D:
-  serializedVersion: 4
+  serializedVersion: 5
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -665,8 +687,8 @@ Rigidbody2D:
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
   m_Mass: 40
-  m_LinearDrag: 0
-  m_AngularDrag: 0.05
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
   m_GravityScale: 1
   m_Material: {fileID: 0}
   m_IncludeLayers:
@@ -699,9 +721,9 @@ HingeJoint2D:
   m_UseConnectedAnchor: 1
   m_UseMotor: 1
   m_Motor:
-    m_MotorSpeed: 9.1
-    m_MaximumMotorForce: 10000
-  m_UseLimits: 1
+    m_MotorSpeed: 0
+    m_MaximumMotorForce: 5000
+  m_UseLimits: 0
   m_AngleLimits:
     m_LowerAngle: -107.3
     m_UpperAngle: 88.8
@@ -761,7 +783,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   hingeJoint: {fileID: 6348427575635455485}
-  rotationSpeed: 150
+  rotationSpeed: 25
   left: 0
   right: 0
   selected: 0
@@ -775,12 +797,11 @@ MonoBehaviour:
   lastInput: 0
   targetRotationRef: 0
   rb: {fileID: 0}
-  sfa: {fileID: 8903061086721225643}
+  sfa: {fileID: 0}
   useLimits: 0
   min: 0
   max: 0
   motorSpeed: 0
-  maxTorque: 5000
 --- !u!114 &6558921345124739725
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -837,6 +858,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: -176.71}
 --- !u!212 &3925811490311583965
 SpriteRenderer:
+  serializedVersion: 2
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -852,6 +874,11 @@ SpriteRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 0
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -873,9 +900,11 @@ SpriteRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
+  m_MaskInteraction: 0
   m_Sprite: {fileID: -2413806693520163455, guid: a86470a33a6bf42c4b3595704624658b, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 0.5176471}
   m_FlipX: 0
@@ -885,7 +914,6 @@ SpriteRenderer:
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
-  m_MaskInteraction: 0
   m_SpriteSortPoint: 0
 --- !u!58 &3925811490311583964
 CircleCollider2D:
@@ -925,7 +953,7 @@ CircleCollider2D:
   m_Radius: 0.5
 --- !u!50 &3925811490311583967
 Rigidbody2D:
-  serializedVersion: 4
+  serializedVersion: 5
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -936,8 +964,8 @@ Rigidbody2D:
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
   m_Mass: 40
-  m_LinearDrag: 0
-  m_AngularDrag: 0.05
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
   m_GravityScale: 1
   m_Material: {fileID: 0}
   m_IncludeLayers:
@@ -1048,7 +1076,7 @@ MonoBehaviour:
   m_RaysPerDirection: 6
   m_MaxRayDegrees: 180
   m_SphereCastRadius: 0
-  m_RayLength: 134
+  m_RayLength: 63
   m_RayLayerMask:
     serializedVersion: 2
     m_Bits: 4294943177
@@ -1079,7 +1107,7 @@ GameObject:
   m_Component:
   - component: {fileID: 3925811490408253652}
   - component: {fileID: 8207251179530090737}
-  - component: {fileID: 8903061086721225643}
+  - component: {fileID: 1856757793846716923}
   - component: {fileID: 6535659581601192774}
   - component: {fileID: 1121986311667799131}
   m_Layer: 8
@@ -1128,24 +1156,24 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_BrainParameters:
-    VectorObservationSize: 553
+    VectorObservationSize: 800
     NumStackedVectorObservations: 1
     m_ActionSpec:
-      m_NumContinuousActions: 10
-      BranchSizes: 0200000002000000
+      m_NumContinuousActions: 8
+      BranchSizes: 0300000003000000030000000300000003000000030000000300000003000000
     VectorActionSize: 
     VectorActionDescriptions: []
     VectorActionSpaceType: 0
     hasUpgradedBrainParametersWithActionSpec: 1
-  m_Model: {fileID: 0}
-  m_InferenceDevice: 0
+  m_Model: {fileID: 5022602860645237092, guid: e98c84e11c1607741815c5379777bb2c, type: 3}
+  m_InferenceDevice: 3
   m_BehaviorType: 0
   m_BehaviorName: StickMan
   TeamId: 0
   m_UseChildSensors: 1
   m_UseChildActuators: 1
-  m_ObservableAttributeHandling: 0
---- !u!114 &8903061086721225643
+  m_ObservableAttributeHandling: 2
+--- !u!114 &1856757793846716923
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -1154,13 +1182,13 @@ MonoBehaviour:
   m_GameObject: {fileID: 3925811490408253655}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4637253c11ffe81459d4dfb9ce1eba71, type: 3}
+  m_Script: {fileID: 11500000, guid: 18cf43a78705907468ececdef974b155, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   agentParameters:
     maxStep: 0
   hasUpgradedFromAgentParameters: 1
-  MaxStep: 20000
+  MaxStep: 5000
   jointGOs:
   - {fileID: 4825255068278544924}
   - {fileID: 4674824483173712151}
@@ -1179,40 +1207,39 @@ MonoBehaviour:
   - {fileID: 1531342828944539938}
   - {fileID: 5225688472565310063}
   - {fileID: 6379588011614286108}
-  initialPositions: []
-  torqueSpeed: 100
-  torque: 0
   head: {fileID: 3925811490311583966}
-  calfT: {fileID: 4638734291480134768}
-  calf2T: {fileID: 4084329793531905839}
-  thighT: {fileID: 9192111301674611166}
-  thigh2T: {fileID: 1841176277326392133}
-  armT: {fileID: 4425096332031049243}
-  arm2T: {fileID: 475956635931723031}
-  lowerArmT: {fileID: 4014777804425392975}
-  lowerArm2T: {fileID: 911494841618116440}
-  marker: {fileID: 0}
+  spine: {fileID: 4258244023075555796}
   target: {fileID: 0}
+  marker: {fileID: 0}
   calf: {fileID: 4863122994546736853}
   calf2: {fileID: 5302048824570903443}
-  hips: {fileID: 6301701100878077241}
-  GC: {fileID: 3187210086922116515, guid: 0d6cd692ee38dac40914f5f743dad485, type: 3}
-  fr: {fileID: 0}
-  maxDistance: -10000
-  spine: {fileID: 4258244023075555796}
-  floorT: {fileID: 0}
+  thigh: {fileID: 4825255068278544924}
+  thigh2: {fileID: 4674824483173712151}
+  arm: {fileID: 2056084906716462140}
+  arm2: {fileID: 1778628366393035810}
+  lowerArm: {fileID: 8595136555145086637}
+  lowerArm2: {fileID: 7710870260465826843}
+  calfMag: {fileID: 3379575650419361929}
+  calf2Mag: {fileID: 7556240858024224734}
+  calfBoot: {fileID: 5571764059082367584}
+  calf2Boot: {fileID: 3182183046733851286}
   RPSArray:
   - {fileID: 4515760336299693323}
   - {fileID: 5045548842341370833}
   - {fileID: 3438994517923681233}
   - {fileID: 2283927873201535886}
   - {fileID: 3195505674454977070}
+  rotateHingeJoints:
+  - {fileID: 7909122787191915024}
+  - {fileID: 8841586641511365104}
+  - {fileID: 5903186701103319080}
+  - {fileID: 6757507608745123631}
+  - {fileID: 4122965252856376203}
+  - {fileID: 8323736100949760345}
+  - {fileID: 8736937293828161202}
+  - {fileID: 4817996649852522814}
+  fr: {fileID: 0}
   copy: {fileID: 0}
-  magnetsActive: 1
-  isMagActive: 0
-  isMag2Active: 0
-  arrowTexture: {fileID: 2800000, guid: 28d47cbaafc98254f8d4f6184dff22cd, type: 3}
-  updateMotorSpeed: 0
 --- !u!114 &6535659581601192774
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1225,7 +1252,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3a5c9d521e5ef4759a8246a07d52221e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  DecisionPeriod: 8
+  DecisionPeriod: 10
   TakeActionsBetweenDecisions: 0
 --- !u!114 &1121986311667799131
 MonoBehaviour:
@@ -1287,6 +1314,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: -120}
 --- !u!1971053207 &8703352074312529006
 SpriteShapeRenderer:
+  serializedVersion: 2
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -1302,6 +1330,11 @@ SpriteShapeRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 0
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -1324,11 +1357,12 @@ SpriteShapeRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
-  m_Color: {r: 1, g: 1, b: 1, a: 0.5176471}
   m_MaskInteraction: 0
+  m_Color: {r: 1, g: 1, b: 1, a: 0.5176471}
   m_ShapeTexture: {fileID: 2800000, guid: b281b91a70a624a0da1c43adc1c30c7b, type: 3}
   m_Sprites:
   - {fileID: 21300000, guid: 0ae2b74b1edd14bb18dd7b65ae916a54, type: 3}
@@ -1401,6 +1435,7 @@ MonoBehaviour:
   m_ShadowDetail: 16
   m_ShadowOffset: 0.5
   m_BoundsScale: 2
+  m_UpdateGeometry: 1
   m_Creator: {fileID: 0}
   m_Modifiers: []
   m_ColliderSegment: []
@@ -1453,7 +1488,7 @@ BoxCollider2D:
   m_EdgeRadius: 0
 --- !u!50 &6284880295394363149
 Rigidbody2D:
-  serializedVersion: 4
+  serializedVersion: 5
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -1464,8 +1499,8 @@ Rigidbody2D:
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
   m_Mass: 40
-  m_LinearDrag: 0
-  m_AngularDrag: 0.05
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
   m_GravityScale: 1
   m_Material: {fileID: 0}
   m_IncludeLayers:
@@ -1499,7 +1534,7 @@ HingeJoint2D:
   m_UseMotor: 1
   m_Motor:
     m_MotorSpeed: 0
-    m_MaximumMotorForce: 10000
+    m_MaximumMotorForce: 5000
   m_UseLimits: 1
   m_AngleLimits:
     m_LowerAngle: -130
@@ -1544,7 +1579,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   hingeJoint: {fileID: 6794002259307815298}
-  rotationSpeed: 150
+  rotationSpeed: 25
   left: 0
   right: 0
   selected: 0
@@ -1558,12 +1593,11 @@ MonoBehaviour:
   lastInput: 0
   targetRotationRef: 0
   rb: {fileID: 0}
-  sfa: {fileID: 8903061086721225643}
+  sfa: {fileID: 0}
   useLimits: 0
   min: 0
   max: 0
   motorSpeed: 0
-  maxTorque: 5000
 --- !u!114 &4854665804512334673
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1592,7 +1626,6 @@ GameObject:
   - component: {fileID: 1880214492901679425}
   - component: {fileID: 334832590312633013}
   - component: {fileID: 2164199592998883793}
-  - component: {fileID: 2991177393039522627}
   - component: {fileID: 1974765376}
   - component: {fileID: 1148168017351872659}
   - component: {fileID: 7909122787191915024}
@@ -1621,6 +1654,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: -60}
 --- !u!1971053207 &2293953815535013515
 SpriteShapeRenderer:
+  serializedVersion: 2
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -1636,6 +1670,11 @@ SpriteShapeRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 0
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -1658,11 +1697,12 @@ SpriteShapeRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
-  m_Color: {r: 1, g: 1, b: 1, a: 0.5176471}
   m_MaskInteraction: 0
+  m_Color: {r: 1, g: 1, b: 1, a: 0.5176471}
   m_ShapeTexture: {fileID: 2800000, guid: b281b91a70a624a0da1c43adc1c30c7b, type: 3}
   m_Sprites:
   - {fileID: 21300000, guid: 0ae2b74b1edd14bb18dd7b65ae916a54, type: 3}
@@ -1735,6 +1775,7 @@ MonoBehaviour:
   m_ShadowDetail: 16
   m_ShadowOffset: 0.5
   m_BoundsScale: 2
+  m_UpdateGeometry: 1
   m_Creator: {fileID: 0}
   m_Modifiers: []
   m_ColliderSegment: []
@@ -1787,7 +1828,7 @@ BoxCollider2D:
   m_EdgeRadius: 0
 --- !u!50 &334832590312633013
 Rigidbody2D:
-  serializedVersion: 4
+  serializedVersion: 5
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -1798,8 +1839,8 @@ Rigidbody2D:
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
   m_Mass: 40
-  m_LinearDrag: 0
-  m_AngularDrag: 0.05
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
   m_GravityScale: 1
   m_Material: {fileID: 0}
   m_IncludeLayers:
@@ -1833,26 +1874,11 @@ HingeJoint2D:
   m_UseMotor: 1
   m_Motor:
     m_MotorSpeed: 0
-    m_MaximumMotorForce: 10000
+    m_MaximumMotorForce: 5000
   m_UseLimits: 1
   m_AngleLimits:
     m_LowerAngle: -86.4
     m_UpperAngle: 111.7
---- !u!114 &2991177393039522627
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4825255068278544924}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e63f20af2a51c3942b49dff62e6749ca, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  thighJoint: {fileID: 2164199592998883793}
-  spine: {fileID: 0}
-  rotationSpeed: 10
 --- !u!114 &1974765376
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1893,7 +1919,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   hingeJoint: {fileID: 2164199592998883793}
-  rotationSpeed: 150
+  rotationSpeed: 25
   left: 0
   right: 0
   selected: 0
@@ -1907,12 +1933,11 @@ MonoBehaviour:
   lastInput: 0
   targetRotationRef: 0
   rb: {fileID: 0}
-  sfa: {fileID: 8903061086721225643}
+  sfa: {fileID: 0}
   useLimits: 0
   min: 0
   max: 0
   motorSpeed: 0
-  maxTorque: 5000
 --- !u!114 &2082737427201544538
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1974,6 +1999,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: -75}
 --- !u!1971053207 &8829429129906503121
 SpriteShapeRenderer:
+  serializedVersion: 2
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -1989,6 +2015,11 @@ SpriteShapeRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 0
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -2011,11 +2042,12 @@ SpriteShapeRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
-  m_Color: {r: 1, g: 1, b: 1, a: 0.5176471}
   m_MaskInteraction: 0
+  m_Color: {r: 1, g: 1, b: 1, a: 0.5176471}
   m_ShapeTexture: {fileID: 2800000, guid: b281b91a70a624a0da1c43adc1c30c7b, type: 3}
   m_Sprites:
   - {fileID: 21300000, guid: 0ae2b74b1edd14bb18dd7b65ae916a54, type: 3}
@@ -2088,6 +2120,7 @@ MonoBehaviour:
   m_ShadowDetail: 16
   m_ShadowOffset: 0.5
   m_BoundsScale: 2
+  m_UpdateGeometry: 1
   m_Creator: {fileID: 0}
   m_Modifiers: []
   m_ColliderSegment: []
@@ -2140,7 +2173,7 @@ BoxCollider2D:
   m_EdgeRadius: 0
 --- !u!50 &5807747141117671449
 Rigidbody2D:
-  serializedVersion: 4
+  serializedVersion: 5
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -2151,8 +2184,8 @@ Rigidbody2D:
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
   m_Mass: 80
-  m_LinearDrag: 0
-  m_AngularDrag: 0.05
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
   m_GravityScale: 1
   m_Material: {fileID: 0}
   m_IncludeLayers:
@@ -2186,7 +2219,7 @@ HingeJoint2D:
   m_UseMotor: 1
   m_Motor:
     m_MotorSpeed: 0
-    m_MaximumMotorForce: 10000
+    m_MaximumMotorForce: 5000
   m_UseLimits: 1
   m_AngleLimits:
     m_LowerAngle: -116.2
@@ -2257,7 +2290,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   hingeJoint: {fileID: 2711991774041956083}
-  rotationSpeed: 150
+  rotationSpeed: 25
   left: 0
   right: 0
   selected: 0
@@ -2271,12 +2304,11 @@ MonoBehaviour:
   lastInput: 0
   targetRotationRef: 0
   rb: {fileID: 0}
-  sfa: {fileID: 8903061086721225643}
+  sfa: {fileID: 0}
   useLimits: 0
   min: 0
   max: 0
   motorSpeed: 0
-  maxTorque: 5000
 --- !u!114 &5571764059082367584
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2404,7 +2436,6 @@ MonoBehaviour:
   min: 0
   max: 0
   motorSpeed: 0
-  maxTorque: 5000
 --- !u!1 &5302048824570903443
 GameObject:
   m_ObjectHideFlags: 0
@@ -2452,6 +2483,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: -105}
 --- !u!1971053207 &6174830324030575024
 SpriteShapeRenderer:
+  serializedVersion: 2
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -2467,6 +2499,11 @@ SpriteShapeRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 0
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -2489,11 +2526,12 @@ SpriteShapeRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
-  m_Color: {r: 1, g: 1, b: 1, a: 0.5176471}
   m_MaskInteraction: 0
+  m_Color: {r: 1, g: 1, b: 1, a: 0.5176471}
   m_ShapeTexture: {fileID: 2800000, guid: b281b91a70a624a0da1c43adc1c30c7b, type: 3}
   m_Sprites:
   - {fileID: 21300000, guid: 0ae2b74b1edd14bb18dd7b65ae916a54, type: 3}
@@ -2566,6 +2604,7 @@ MonoBehaviour:
   m_ShadowDetail: 16
   m_ShadowOffset: 0.5
   m_BoundsScale: 2
+  m_UpdateGeometry: 1
   m_Creator: {fileID: 0}
   m_Modifiers: []
   m_ColliderSegment: []
@@ -2618,7 +2657,7 @@ BoxCollider2D:
   m_EdgeRadius: 0
 --- !u!50 &1121742210243013613
 Rigidbody2D:
-  serializedVersion: 4
+  serializedVersion: 5
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -2629,8 +2668,8 @@ Rigidbody2D:
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
   m_Mass: 80
-  m_LinearDrag: 0
-  m_AngularDrag: 0.05
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
   m_GravityScale: 1
   m_Material: {fileID: 0}
   m_IncludeLayers:
@@ -2664,7 +2703,7 @@ HingeJoint2D:
   m_UseMotor: 1
   m_Motor:
     m_MotorSpeed: 0
-    m_MaximumMotorForce: 10000
+    m_MaximumMotorForce: 5000
   m_UseLimits: 1
   m_AngleLimits:
     m_LowerAngle: -131.3
@@ -2735,7 +2774,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   hingeJoint: {fileID: 8319999397155192912}
-  rotationSpeed: 150
+  rotationSpeed: 25
   left: 0
   right: 0
   selected: 0
@@ -2749,12 +2788,11 @@ MonoBehaviour:
   lastInput: 0
   targetRotationRef: 0
   rb: {fileID: 0}
-  sfa: {fileID: 8903061086721225643}
+  sfa: {fileID: 0}
   useLimits: 0
   min: 0
   max: 0
   motorSpeed: 0
-  maxTorque: 5000
 --- !u!114 &3182183046733851286
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2882,7 +2920,6 @@ MonoBehaviour:
   min: 0
   max: 0
   motorSpeed: 0
-  maxTorque: 5000
 --- !u!1 &5676322422949576517
 GameObject:
   m_ObjectHideFlags: 0
@@ -2900,6 +2937,7 @@ GameObject:
   - component: {fileID: 2793624039097368801}
   - component: {fileID: 1165716680515235518}
   - component: {fileID: 4855669576946793692}
+  - component: {fileID: 6986611502149825503}
   m_Layer: 8
   m_Name: Spine
   m_TagString: Spine
@@ -2924,6 +2962,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 90}
 --- !u!1971053207 &5091971070900013938
 SpriteShapeRenderer:
+  serializedVersion: 2
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -2939,6 +2978,11 @@ SpriteShapeRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 0
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -2961,11 +3005,12 @@ SpriteShapeRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
-  m_Color: {r: 1, g: 1, b: 1, a: 0.5176471}
   m_MaskInteraction: 0
+  m_Color: {r: 1, g: 1, b: 1, a: 0.5176471}
   m_ShapeTexture: {fileID: 2800000, guid: b281b91a70a624a0da1c43adc1c30c7b, type: 3}
   m_Sprites:
   - {fileID: 21300000, guid: 0ae2b74b1edd14bb18dd7b65ae916a54, type: 3}
@@ -3038,6 +3083,7 @@ MonoBehaviour:
   m_ShadowDetail: 16
   m_ShadowOffset: 0.5
   m_BoundsScale: 2
+  m_UpdateGeometry: 1
   m_Creator: {fileID: 0}
   m_Modifiers: []
   m_ColliderSegment: []
@@ -3090,7 +3136,7 @@ BoxCollider2D:
   m_EdgeRadius: 0
 --- !u!50 &1554581600600707696
 Rigidbody2D:
-  serializedVersion: 4
+  serializedVersion: 5
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -3101,8 +3147,8 @@ Rigidbody2D:
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
   m_Mass: 60
-  m_LinearDrag: 0
-  m_AngularDrag: 0.05
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
   m_GravityScale: 1
   m_Material: {fileID: 0}
   m_IncludeLayers:
@@ -3194,6 +3240,25 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   touchingFloor: 0
   startingColor: {r: 0, g: 0, b: 0, a: 0}
+--- !u!114 &6986611502149825503
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5676322422949576517}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 341b565370fe9894b9b59bbced815a1d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  fR: {fileID: 0}
+  joint: {fileID: 0}
+  spaceJoint: {fileID: 0}
+  headJoint: {fileID: 0}
+  Spine: {fileID: 0}
+  limbsToLock: []
+  spaceJoints: []
 --- !u!1 &7710870260465826843
 GameObject:
   m_ObjectHideFlags: 0
@@ -3240,6 +3305,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 110}
 --- !u!1971053207 &6259737886458671125
 SpriteShapeRenderer:
+  serializedVersion: 2
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -3255,6 +3321,11 @@ SpriteShapeRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 0
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -3277,11 +3348,12 @@ SpriteShapeRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
-  m_Color: {r: 1, g: 1, b: 1, a: 0.5176471}
   m_MaskInteraction: 0
+  m_Color: {r: 1, g: 1, b: 1, a: 0.5176471}
   m_ShapeTexture: {fileID: 2800000, guid: b281b91a70a624a0da1c43adc1c30c7b, type: 3}
   m_Sprites:
   - {fileID: 21300000, guid: 0ae2b74b1edd14bb18dd7b65ae916a54, type: 3}
@@ -3354,6 +3426,7 @@ MonoBehaviour:
   m_ShadowDetail: 16
   m_ShadowOffset: 0.5
   m_BoundsScale: 2
+  m_UpdateGeometry: 1
   m_Creator: {fileID: 0}
   m_Modifiers: []
   m_ColliderSegment: []
@@ -3406,7 +3479,7 @@ BoxCollider2D:
   m_EdgeRadius: 0
 --- !u!50 &7439244591254356543
 Rigidbody2D:
-  serializedVersion: 4
+  serializedVersion: 5
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -3417,8 +3490,8 @@ Rigidbody2D:
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
   m_Mass: 40
-  m_LinearDrag: 0
-  m_AngularDrag: 0.05
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
   m_GravityScale: 1
   m_Material: {fileID: 0}
   m_IncludeLayers:
@@ -3452,7 +3525,7 @@ HingeJoint2D:
   m_UseMotor: 1
   m_Motor:
     m_MotorSpeed: 0
-    m_MaximumMotorForce: 10000
+    m_MaximumMotorForce: 5000
   m_UseLimits: 1
   m_AngleLimits:
     m_LowerAngle: -144.92
@@ -3563,7 +3636,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   hingeJoint: {fileID: 6379588011614286108}
-  rotationSpeed: 150
+  rotationSpeed: 25
   left: 0
   right: 0
   selected: 0
@@ -3577,12 +3650,11 @@ MonoBehaviour:
   lastInput: 0
   targetRotationRef: 0
   rb: {fileID: 0}
-  sfa: {fileID: 8903061086721225643}
+  sfa: {fileID: 0}
   useLimits: 0
   min: 0
   max: 0
   motorSpeed: 0
-  maxTorque: 5000
 --- !u!114 &3195505674454977070
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3680,6 +3752,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 70}
 --- !u!1971053207 &7161717042304804315
 SpriteShapeRenderer:
+  serializedVersion: 2
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -3695,6 +3768,11 @@ SpriteShapeRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 0
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -3717,11 +3795,12 @@ SpriteShapeRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
-  m_Color: {r: 1, g: 1, b: 1, a: 0.5176471}
   m_MaskInteraction: 0
+  m_Color: {r: 1, g: 1, b: 1, a: 0.5176471}
   m_ShapeTexture: {fileID: 2800000, guid: b281b91a70a624a0da1c43adc1c30c7b, type: 3}
   m_Sprites:
   - {fileID: 21300000, guid: 0ae2b74b1edd14bb18dd7b65ae916a54, type: 3}
@@ -3794,6 +3873,7 @@ MonoBehaviour:
   m_ShadowDetail: 16
   m_ShadowOffset: 0.5
   m_BoundsScale: 2
+  m_UpdateGeometry: 1
   m_Creator: {fileID: 0}
   m_Modifiers: []
   m_ColliderSegment: []
@@ -3846,7 +3926,7 @@ BoxCollider2D:
   m_EdgeRadius: 0
 --- !u!50 &4380315830997014682
 Rigidbody2D:
-  serializedVersion: 4
+  serializedVersion: 5
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -3857,8 +3937,8 @@ Rigidbody2D:
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
   m_Mass: 40
-  m_LinearDrag: 0
-  m_AngularDrag: 0.05
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
   m_GravityScale: 1
   m_Material: {fileID: 0}
   m_IncludeLayers:
@@ -3892,7 +3972,7 @@ HingeJoint2D:
   m_UseMotor: 1
   m_Motor:
     m_MotorSpeed: 0
-    m_MaximumMotorForce: 10000
+    m_MaximumMotorForce: 5000
   m_UseLimits: 1
   m_AngleLimits:
     m_LowerAngle: -119
@@ -4003,7 +4083,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   hingeJoint: {fileID: 5225688472565310063}
-  rotationSpeed: 150
+  rotationSpeed: 25
   left: 0
   right: 0
   selected: 0
@@ -4017,12 +4097,11 @@ MonoBehaviour:
   lastInput: 0
   targetRotationRef: 0
   rb: {fileID: 0}
-  sfa: {fileID: 8903061086721225643}
+  sfa: {fileID: 0}
   useLimits: 0
   min: 0
   max: 0
   motorSpeed: 0
-  maxTorque: 5000
 --- !u!114 &2283927873201535886
 MonoBehaviour:
   m_ObjectHideFlags: 0

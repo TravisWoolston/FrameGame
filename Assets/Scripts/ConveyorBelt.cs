@@ -10,7 +10,7 @@ public class ConveyorBelt : MonoBehaviour
     {
         rb = GetComponent<Rigidbody2D>();
         // Set the initial velocity to move in the right direction
-        rb.velocity = new Vector2(speed, 0f);
+        rb.linearVelocity = new Vector2(speed, 0f);
     }
 
     private void OnTriggerStay2D(Collider2D other)

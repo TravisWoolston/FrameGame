@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1045 &1
+EditorBuildSettings:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Scenes:
+  - enabled: 0
+    path: Assets/Scenes/SampleScene.unity
+    guid: 8c9cfa26abfee488c85f1582747f6a02
+  - enabled: 0
+    path: Assets/frameGameTestZone.unity
+    guid: 2f4a977bfef4dbc428764be79486cb68
+  - enabled: 1
+    path: Assets/Scenes/Endless run.unity
+    guid: 1cc781c227f638943b212c02e29f503e
+  - enabled: 0
+    path: Assets/Scenes/AI environment.unity
+    guid: 2e906ccddbd557e47830b5e3bbcd514c
+  m_configObjects:
+    com.unity.adaptiveperformance.loader_settings: {fileID: 11400000, guid: 4fc791b89b944d94ca57518a2a9fc486, type: 2}
+    com.unity.adaptiveperformance.simulator.provider_settings: {fileID: 11400000, guid: 5f770c43887325c42bbc51d16771cd8e, type: 2}
+  m_UseUCBPForAssetBundles: 0

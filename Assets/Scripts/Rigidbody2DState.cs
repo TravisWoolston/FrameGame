@@ -13,7 +13,7 @@ public class Rigidbody2DState : MonoBehaviour
     {
         initialPosition = rb.transform.position;
         initialRotation = rb.transform.rotation;
-        initialVelocity = rb.velocity;
+        initialVelocity = rb.linearVelocity;
     }
 
     public void CaptureState(Rigidbody2D rb, Rigidbody2D frozenRB)
@@ -23,7 +23,7 @@ public class Rigidbody2DState : MonoBehaviour
         initialPosition = frozenRB.transform.position;
         initialRotation = frozenRB.transform.rotation;
 
-        initialVelocity = rb.velocity;
+        initialVelocity = rb.linearVelocity;
         if(rb.gameObject.name != "Hips")
         activeAngle = rb.gameObject.GetComponent<HingeJoint2D>().jointAngle;
     }
@@ -82,7 +82,7 @@ public class Rigidbody2DState : MonoBehaviour
 
         // rb.transform.position = frozenRB.transform.position;
         // rb.transform.rotation = frozenRB.transform.rotation;
-        rb.velocity = initialVelocity;
+        rb.linearVelocity = initialVelocity;
     }
 
     public Vector2 GetInitialPosition()

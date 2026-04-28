@@ -82,6 +82,7 @@ public class StickFigureAgent : Agent
     public Texture2D arrowTexture;
     private Vector2 toTarget;
     public bool updateMotorSpeed = false;
+    public bool legsOnly = false;
     private float distance;
     private float spineReward;
     private float hToFReward = 2.5f;
@@ -146,7 +147,6 @@ public class StickFigureAgent : Agent
         // }
     }
 
-
     private void HandleReward(string source, float value)
     {
         UIRewards += value;
@@ -160,7 +160,7 @@ public class StickFigureAgent : Agent
                 bestNetScore = rewardSources[source];
                 bestNet = source;
             }
-                     else if (rewardSources[source] < worstNetScore)
+            else if (rewardSources[source] < worstNetScore)
             {
                 worstNetScore = rewardSources[source];
                 worstNet = source;
@@ -199,9 +199,10 @@ public class StickFigureAgent : Agent
         //     multiplier = 2;
         // }
         float newDistance = GetDistance();
-        if(distance !=0)
-        HandleReward("Distance Reward", (distance - newDistance)*multiplier * 2);
-        if((distance - newDistance) < 0){
+        if (distance != 0)
+            HandleReward("Distance Reward", (distance - newDistance) * multiplier * 2);
+        if ((distance - newDistance) < 0)
+        {
             HandleReward("Distance Reward", -.1f);
         }
         distance = newDistance;
@@ -213,21 +214,30 @@ public class StickFigureAgent : Agent
         HandleReward("Spine Reward", (newSpineReward - spineReward));
         recovering = ((newSpineReward - spineReward) >= -.05);
         spineReward = newSpineReward;
-        if(floorT){
-                        float newHToF = headToFloorReturn();
+        if (floorT)
+        {
+            float newHToF = headToFloorReturn();
             HandleReward("HToF Reward", newHToF - hToFReward);
             hToFReward = newHToF;
             float newHAH = headAboveHipsReturn();
             HandleReward("Head above hips", newHAH - hAHReward);
             hAHReward = newHAH;
-
         }
-
 
         for (int i = 0; i < RHJs.Length; i++)
         {
             // float scaledValue = vectorAction.ContinuousActions[i] * 180;
-
+            if (
+                legsOnly == true
+                && RHJs[i].gameObject.name != "Calf"
+                && RHJs[i].gameObject.name != "Calf 2"
+                && RHJs[i].gameObject.name != "Thigh"
+                && RHJs[i].gameObject.name != "Thigh 2"
+            )
+            {
+                Debug.Log(RHJs[i].gameObject.name);
+                continue;
+            }
             // RHJs[i].SetJointAngle(scaledValue);
             HingeJoint2D hinge = RHJs[i].hingeJoint;
             float middle = (hinge.limits.min + hinge.limits.max) / 2f;
@@ -240,10 +250,10 @@ public class StickFigureAgent : Agent
             if (headCheck)
                 if (headCheck.touchingFloor)
                 {
-                    // HandleReward("Head touching floor", -.1f);
-                    HandleReward("Head touching floor", -100f);
-                    OnEpisodeEnd();
-                    EndEpisode();
+                    HandleReward("Head touching floor", -.1f);
+                    // HandleReward("Head touching floor", -(this.MaxStep - this.StepCount) / 10);
+                    // OnEpisodeEnd();
+                    // EndEpisode();
                     // return;
                 }
                 else
@@ -370,14 +380,14 @@ public class StickFigureAgent : Agent
             if (groundCheck.touchingFloor)
             {
                 HandleReward("arms touching floor", -.1f);
-                if(!recovering){
-                    HandleReward("arms touching floor", -100f);
-                OnEpisodeEnd();
-                EndEpisode();
-                }
+                // if (!recovering)
+                // {
+                //     HandleReward("arms touching floor", -(this.MaxStep - this.StepCount) / 10);
+                //     OnEpisodeEnd();
+                //     EndEpisode();
+                // }
                 // HandleReward("Hands on floor", -10f);
                 // HandleReward("arms touching floor", -.01f);
-                
             }
             else
             {
@@ -408,7 +418,7 @@ public class StickFigureAgent : Agent
         }
         else
         {
-            HandleReward("hips to floor", hipsToFloor/100);
+            HandleReward("hips to floor", hipsToFloor / 100);
         }
     }
 
@@ -432,12 +442,14 @@ public class StickFigureAgent : Agent
             HandleReward("Head above hips", .1f);
         }
     }
-  private float headAboveHipsReturn()
+
+    private float headAboveHipsReturn()
     {
         float hToF = head.localPosition.y - floorT.localPosition.y;
         float hipsToFloor = hips.localPosition.y - floorT.localPosition.y;
         return hToF - hipsToFloor;
     }
+
     private void headToFloor()
     {
         float hToF = (head.localPosition.y - floorT.localPosition.y) / 10;
@@ -448,7 +460,7 @@ public class StickFigureAgent : Agent
         }
         else
         {
-            HandleReward("Head to Floor", hToF/100);
+            HandleReward("Head to Floor", hToF / 100);
         }
     }
 
@@ -519,7 +531,7 @@ public class StickFigureAgent : Agent
 
         // Calculate the dot product between the agent's velocity and the direction to the target
         float dot = Vector2.Dot(
-            spine.gameObject.GetComponent<Rigidbody2D>().velocity.normalized,
+            spine.gameObject.GetComponent<Rigidbody2D>().linearVelocity.normalized,
             toTarget.normalized
         );
 
@@ -594,7 +606,7 @@ public class StickFigureAgent : Agent
 
             // Calculate the dot product between the agent's velocity and the direction to the target
             float dot = Vector2.Dot(
-                dotCalf.GetComponent<Rigidbody2D>().velocity.normalized,
+                dotCalf.GetComponent<Rigidbody2D>().linearVelocity.normalized,
                 toTarget.normalized
             );
             float calfDotReward = 10f;
@@ -652,11 +664,10 @@ public class StickFigureAgent : Agent
             highScore = netScore;
         }
         prevScore = netScore;
-        if (netScore > cameraFollow.highScore)
-        {
-            cameraFollow.followHighScore(transform, netScore);
-        }
-
+        // if (netScore > cameraFollow.highScore)
+        // {
+        //     cameraFollow.followHighScore(transform, netScore);
+        // }
 
         // string leaderBoard =
         //     $"Highest: {bestNet} {bestNetScore}\n Lowest: {worstNet} {worstNetScore}\n";
@@ -729,7 +740,7 @@ public class StickFigureAgent : Agent
             float normalisedAngle = (hinge.jointAngle - middle) / (hinge.limits.max - middle);
             sensor.AddObservation(normalisedAngle);
             sensor.AddObservation(RescaleValue(hinge.jointSpeed, 0, 200, false));
-            sensor.AddObservation(rb.velocity);
+            sensor.AddObservation(rb.linearVelocity);
             sensor.AddObservation(t.localPosition);
             sensor.AddObservation(t.rotation.z);
         }
@@ -751,7 +762,7 @@ public class StickFigureAgent : Agent
             // sensor.AddObservation(go.GetComponent<RotateHingeJoint>().startingAngle);
             // sensor.AddObservation(rHJ.targetRotationRef);
             // sensor.AddObservation(rHJ.motorSpeed);
-            
+
             i++;
         }
         if (magnetsActive)
@@ -854,7 +865,7 @@ public class StickFigureAgent : Agent
         if (fr)
             fr.MLRestore();
     }
-    
+
     void OnGUI()
     {
         if (!fr)
@@ -936,11 +947,11 @@ public class StickFigureAgent : Agent
                 new Rect(screenPosition.x, Screen.height - screenPosition.y + 60, 200, 20),
                 "Spine Reward " + rewardSources["Spine Reward"]
             );
-            if(rewardSources.ContainsKey("Head above Hips"))
-            GUI.Label(
-                new Rect(screenPosition.x, Screen.height - screenPosition.y + 75, 200, 20),
-                "head above hips " + rewardSources["Head above hips"]
-            );
+            if (rewardSources.ContainsKey("Head above Hips"))
+                GUI.Label(
+                    new Rect(screenPosition.x, Screen.height - screenPosition.y + 75, 200, 20),
+                    "head above hips " + rewardSources["Head above hips"]
+                );
         }
         if (floorT)
         {

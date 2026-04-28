@@ -1,0 +1,53 @@
+############################
+# Unity Generated Folders
+############################
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+UserSettings/
+
+############################
+# Unity Cache / IDE
+############################
+MemoryCaptures/
+*.pidb
+*.booproj
+*.svd
+*.pdb
+
+############################
+# Visual Studio / Rider
+############################
+.vs/
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+
+############################
+# OS Files
+############################
+.DS_Store
+Thumbs.db
+
+############################
+# Python (your venv folder)
+############################
+venv/
+__pycache__/
+*.pyc
+
+############################
+# Custom (based on your project)
+############################
+results/
+config/   # remove this line if config should be shared

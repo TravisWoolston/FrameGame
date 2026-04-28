@@ -17,7 +17,7 @@ public class GameStateReplay : MonoBehaviour
         {
             position = rb.transform.position;
             rotation = rb.transform.rotation.eulerAngles.z; // Assuming you want the Z rotation.
-            velocity = rb.velocity;
+            velocity = rb.linearVelocity;
         }
     }
 

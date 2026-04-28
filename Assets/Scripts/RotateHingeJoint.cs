@@ -3,8 +3,8 @@ using UnityEngine;
 public class RotateHingeJoint : MonoBehaviour
 {
     public HingeJoint2D hingeJoint;
-    public float rotationSpeed = 150f;
-
+    public float rotationSpeed = 25f;
+    private float sfaRotationSpeed = 150f;
     // public float rotationDamping = 2f;
     public KeyCode left;
     public KeyCode right;
@@ -21,12 +21,12 @@ public class RotateHingeJoint : MonoBehaviour
     public float lastInput = 0;
     public float targetRotationRef = 0;
     public Rigidbody2D rb;
-    public StickFigureAgent sfa;
+    public StickFigureAgentv2 sfa;
     public bool useLimits = false;
     public float min = 0;
         public float max = 0;
         public float motorSpeed = 0;
-        public float maxTorque = 5000;
+        private float maxTorque = 5000;
 
 void Awake(){
             rb = GetComponent<Rigidbody2D>();
@@ -61,25 +61,25 @@ void Awake(){
         // startMax = hingeJoint.limits.max;
     }
 
-    private void OnCollisionEnter2D(Collision2D other)
-    {
-        if (sfa)
-        {
-            if (
-                other.gameObject.name == "Spine" && this.gameObject.name == "Lower Arm"
-                || other.gameObject.name == "Spine" && this.gameObject.name == "Lower Arm 2"
-                || other.gameObject.name == "Spine" && this.gameObject.name == "Calf"
-                || other.gameObject.name == "Spine" && this.gameObject.name == "Calf 2"
-            )
-            {
-                sfa.penalize();
-            }
-            else
-            {
-                sfa.reward();
-            }
-        }
-    }
+    // private void OnCollisionEnter2D(Collision2D other)
+    // {
+    //     if (sfa)
+    //     {
+    //         if (
+    //             other.gameObject.name == "Spine" && this.gameObject.name == "Lower Arm"
+    //             || other.gameObject.name == "Spine" && this.gameObject.name == "Lower Arm 2"
+    //             || other.gameObject.name == "Spine" && this.gameObject.name == "Calf"
+    //             || other.gameObject.name == "Spine" && this.gameObject.name == "Calf 2"
+    //         )
+    //         {
+    //             sfa.penalize();
+    //         }
+    //         else
+    //         {
+    //             sfa.reward();
+    //         }
+    //     }
+    // }
 
     void Update()
     {
@@ -140,7 +140,7 @@ void Awake(){
     public void SetJointAngle(float targetRotation){
         hingeJoint.motor = motor;
         // targetRotation = Mathf.Clamp(targetRotation, min, max);
-        if(targetRotation < min || targetRotation > max) return;
+        // if(targetRotation < min || targetRotation > max) return;
 
         targetRotationRef = targetRotation;
 
@@ -148,7 +148,7 @@ void Awake(){
 
         motor.motorSpeed = (targetRotation - hingeJoint.jointAngle) / Time.deltaTime;
         motorSpeed = motor.motorSpeed;
-        motor.maxMotorTorque = 5000;
+        // motor.maxMotorTorque = 5000;
         hingeJoint.motor = motor;
         // if (setLimits == true)
         // {
@@ -162,6 +162,27 @@ void Awake(){
         motor.motorSpeed = motorSpeed;
         hingeJoint.motor = motor;
     }
+    public void sfaRotateJoint(int direction, float speed)
+{
+    if (direction == 1)
+    {
+        // Move clockwise
+        motor.motorSpeed = speed;
+    }
+    else if (direction == -1)
+    {
+        // Move counterclockwise
+        motor.motorSpeed = -speed;
+    }
+    else
+    {
+        // Do not move
+        motor.motorSpeed = 0;
+    }
+    hingeJoint.motor = motor;
+    hingeJoint.useMotor = direction != 0; // Enable motor only if moving
+}
+
     public void RotateJoint(int direction)
     {
         lastInput = direction;

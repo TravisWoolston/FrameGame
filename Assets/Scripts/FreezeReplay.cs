@@ -75,8 +75,9 @@ public class FreezeReplay : MonoBehaviour
 
         if (playerObj.name == "FighterAgent(Clone)")
         {
-            StickFigureAgent sfa = playerObj.GetComponent<StickFigureAgent>();
+            StickFigureAgentv2 sfa = playerObj.GetComponent<StickFigureAgentv2>();
             sfa.fr = this;
+            sfa.EnableGUI(gameObject.name);
             if (marker)
             {
                 Debug.Log("marker 1 set");
@@ -96,7 +97,7 @@ public class FreezeReplay : MonoBehaviour
                 int j = 0;
                 target = playerObj;
                 foreach(GameObject agent in agentObjs){
-                    StickFigureAgent sfa = agent.GetComponent<StickFigureAgent>();
+                    StickFigureAgentv2 sfa = agent.GetComponent<StickFigureAgentv2>();
                     sfa.fr = this;
                 sfa.target = playerObj.transform;
                 sfa.copy = agentCopies[j];
