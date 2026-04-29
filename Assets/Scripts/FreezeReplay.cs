@@ -309,10 +309,9 @@ public class GameStateSnapshot : MonoBehaviour
         freezeReplay.lastSnapshotTime = Time.time;
         // GameObject[] rbCopies = GameObject.FindGameObjectsWithTag("copy");
         Transform parentTransform = frozenParentTransform;
-        GameObject[] nestedObjects = new GameObject[parentTransform.childCount];
+        int childCount = parentTransform.childCount;
 
-        int k = 0;
-        for (int i = freezeReplay.rbToCap.Count - ((j+1) * nestedObjects.Length); i < freezeReplay.rbToCap.Count - (j * nestedObjects.Length); i++)
+        for (int i = 0; i < freezeReplay.rbToCap.Count; i++)
         {
             if (!frozenStates.ContainsKey(freezeReplay.rbToCap[i]))
             {
@@ -322,25 +321,24 @@ public class GameStateSnapshot : MonoBehaviour
                 );
             }
             GameObject frozenObject;
-            
-            // if (i < (parentTransform.childCount * (j+1)))
-            // {
-                Transform childTransform = parentTransform.GetChild(k);
-                k++;
+
+            if (i < childCount)
+            {
+                Transform childTransform = parentTransform.GetChild(i);
                 frozenObject = childTransform.gameObject;
-            // }
-            // else
-            // {
-            //     frozenObject = freezeReplay.rbToCap[i].gameObject;
-            // }
+            }
+            else
+            {
+                // Fall back to the rigidbody's own GameObject for entries
+                // that don't have a corresponding frozen copy child
+                frozenObject = freezeReplay.rbToCap[i].gameObject;
+            }
             freezeReplay.frozenCopies[i] = frozenObject;
 
             frozenStates[freezeReplay.rbToCap[i]].CaptureState(
                 freezeReplay.rbToCap[i],
                 frozenObject.GetComponent<Rigidbody2D>()
             );
-
-            // CaptureComponents(rbCopies[i]);
         }
         if (freezeReplay.makeAgentCopies && j < freezeReplay.agentObjs.Length)
         {
@@ -414,14 +412,13 @@ public class GameStateSnapshot : MonoBehaviour
         // Restore the state of the specified 2D freezeReplay.rbToCap from the nested objects within the frozenCopy
         for (int i = 0; i < freezeReplay.rbToCap.Count; i++)
         {
-            // if (frozenStates.ContainsKey(freezeReplay.rbToCap[i]))
-            // {
-
-            frozenStates[freezeReplay.rbToCap[i]].RestoreState(
-                freezeReplay.rbToCap[i],
-                frozenBodies[i].GetComponent<Rigidbody2D>()
-            );
-            // }
+            if (frozenStates.ContainsKey(freezeReplay.rbToCap[i]) && frozenBodies[i] != null)
+            {
+                frozenStates[freezeReplay.rbToCap[i]].RestoreState(
+                    freezeReplay.rbToCap[i],
+                    frozenBodies[i].GetComponent<Rigidbody2D>()
+                );
+            }
         }
 
         // Recursively restore the states of all components attached to the frozenCopy
