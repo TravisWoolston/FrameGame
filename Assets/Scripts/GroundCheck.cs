@@ -59,20 +59,20 @@ public class GroundCheck : MonoBehaviour
         }
         if(this.gameObject.name == "Head"){
                     if(touchingFloor){
-            headRenderer.color = Color.red;
+            if(headRenderer != null) headRenderer.color = Color.red;
 
         }
         else {
-                       headRenderer.color = startingColor;
+                       if(headRenderer != null) headRenderer.color = startingColor;
  
         }
         }
         else if(touchingFloor){
-            ssRenderer.color = Color.red;
+            if(ssRenderer != null) ssRenderer.color = Color.red;
 
         }
         else {
-                       ssRenderer.color = startingColor;
+                       if(ssRenderer != null) ssRenderer.color = startingColor;
  
         }
     }

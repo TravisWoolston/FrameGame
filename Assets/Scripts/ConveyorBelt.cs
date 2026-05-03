@@ -19,12 +19,12 @@ public class ConveyorBelt : MonoBehaviour
         // if (other.gameObject.layer == LayerMask.NameToLayer("ConveyorBelt"))
         // {
             // Move the object with the conveyor belt using AddForce
-            Rigidbody2D otherRb = other.GetComponent<Rigidbody2D>();
-            if (otherRb != null && otherRb.gameObject.tag != "copy")
-            {
-                otherRb.position += Vector2.right * speed * Time.deltaTime;
-                // otherRb.GetComponent<Rigidbody2D>().position = new Vector2(0, otherRb.position.y);
-            }
+            // Rigidbody2D otherRb = other.GetComponent<Rigidbody2D>();
+            // if (otherRb != null && otherRb.gameObject.tag != "copy")
+            // {
+            //     otherRb.position += Vector2.right * speed * Time.deltaTime;
+            //     // otherRb.GetComponent<Rigidbody2D>().position = new Vector2(0, otherRb.position.y);
+            // }
         // }
     }
     

@@ -1,5 +1,36 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!1 &1300304237060366041
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5228535031010725279}
+  m_Layer: 7
+  m_Name: Foot
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5228535031010725279
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1300304237060366041}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 2.14, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 4084329793531905839}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1778628366393035810
 GameObject:
   m_ObjectHideFlags: 0
@@ -17,6 +48,7 @@ GameObject:
   - component: {fileID: 1381960306983722362}
   - component: {fileID: 1099007555}
   - component: {fileID: 4753343579599109222}
+  - component: {fileID: 6884799835682007188}
   m_Layer: 7
   m_Name: Arm 2
   m_TagString: Untagged
@@ -41,6 +73,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 120}
 --- !u!1971053207 &781993350059082986
 SpriteShapeRenderer:
+  serializedVersion: 2
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -56,6 +89,11 @@ SpriteShapeRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 0
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -78,11 +116,12 @@ SpriteShapeRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
-  m_Color: {r: 1, g: 1, b: 1, a: 0.5176471}
   m_MaskInteraction: 0
+  m_Color: {r: 1, g: 1, b: 1, a: 0.5176471}
   m_ShapeTexture: {fileID: 2800000, guid: b281b91a70a624a0da1c43adc1c30c7b, type: 3}
   m_Sprites:
   - {fileID: 21300000, guid: 0ae2b74b1edd14bb18dd7b65ae916a54, type: 3}
@@ -155,6 +194,7 @@ MonoBehaviour:
   m_ShadowDetail: 16
   m_ShadowOffset: 0.5
   m_BoundsScale: 2
+  m_UpdateGeometry: 1
   m_Creator: {fileID: 0}
   m_Modifiers: []
   m_ColliderSegment: []
@@ -166,7 +206,7 @@ BoxCollider2D:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1778628366393035810}
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 3
   m_Density: 1
   m_Material: {fileID: 0}
@@ -207,7 +247,7 @@ BoxCollider2D:
   m_EdgeRadius: 0
 --- !u!50 &9192161565123534109
 Rigidbody2D:
-  serializedVersion: 4
+  serializedVersion: 5
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -217,9 +257,9 @@ Rigidbody2D:
   m_Simulated: 1
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
-  m_Mass: 30
-  m_LinearDrag: 0
-  m_AngularDrag: 0.05
+  m_Mass: 0.6
+  m_LinearDamping: 0.5
+  m_AngularDamping: 5
   m_GravityScale: 1
   m_Material: {fileID: 0}
   m_IncludeLayers:
@@ -228,9 +268,9 @@ Rigidbody2D:
   m_ExcludeLayers:
     serializedVersion: 2
     m_Bits: 0
-  m_Interpolate: 0
+  m_Interpolate: 1
   m_SleepingMode: 1
-  m_CollisionDetection: 0
+  m_CollisionDetection: 1
   m_Constraints: 0
 --- !u!233 &2087833830571840529
 HingeJoint2D:
@@ -250,14 +290,14 @@ HingeJoint2D:
   m_Anchor: {x: 2.5, y: 0}
   m_ConnectedAnchor: {x: 1.1022756, y: -0.12460001}
   m_UseConnectedAnchor: 1
-  m_UseMotor: 1
+  m_UseMotor: 0
   m_Motor:
     m_MotorSpeed: 9.1
-    m_MaximumMotorForce: 10000
-  m_UseLimits: 0
+    m_MaximumMotorForce: 150
+  m_UseLimits: 1
   m_AngleLimits:
-    m_LowerAngle: 70
-    m_UpperAngle: -18
+    m_LowerAngle: -135
+    m_UpperAngle: 135
 --- !u!114 &1381960306983722362
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -301,6 +341,30 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   hinge: {fileID: 0}
   grabber: {fileID: 0}
+--- !u!114 &6884799835682007188
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1778628366393035810}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 716e12aa5dbcba94985759c131365385, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ImpactDamage
+  enableImpactDamage: 1
+  showDamageNumbers: 1
+  showHitFlash: 1
+  enableScreenShake: 1
+  attackMultiplier: 1
+  vulnerabilityMultiplier: 1
+  velocityThreshold: 3
+  damageCooldown: 0.15
+  shakeThreshold: 15
+  shakeIntensity: 0.15
+  shakeDuration: 0.2
+  fighterHealth: {fileID: 0}
 --- !u!1 &2056084906716462140
 GameObject:
   m_ObjectHideFlags: 0
@@ -318,6 +382,7 @@ GameObject:
   - component: {fileID: 4185670371750739892}
   - component: {fileID: 1086719615}
   - component: {fileID: 3979025891110320325}
+  - component: {fileID: 1125416049551286607}
   m_Layer: 6
   m_Name: Arm
   m_TagString: Untagged
@@ -342,6 +407,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 60}
 --- !u!1971053207 &7943167434033552597
 SpriteShapeRenderer:
+  serializedVersion: 2
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -357,6 +423,11 @@ SpriteShapeRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 0
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -379,11 +450,12 @@ SpriteShapeRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
-  m_Color: {r: 1, g: 1, b: 1, a: 0.5176471}
   m_MaskInteraction: 0
+  m_Color: {r: 1, g: 1, b: 1, a: 0.5176471}
   m_ShapeTexture: {fileID: 2800000, guid: b281b91a70a624a0da1c43adc1c30c7b, type: 3}
   m_Sprites:
   - {fileID: 21300000, guid: 0ae2b74b1edd14bb18dd7b65ae916a54, type: 3}
@@ -456,6 +528,7 @@ MonoBehaviour:
   m_ShadowDetail: 16
   m_ShadowOffset: 0.5
   m_BoundsScale: 2
+  m_UpdateGeometry: 1
   m_Creator: {fileID: 0}
   m_Modifiers: []
   m_ColliderSegment: []
@@ -467,7 +540,7 @@ BoxCollider2D:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2056084906716462140}
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 3
   m_Density: 1
   m_Material: {fileID: 0}
@@ -508,7 +581,7 @@ BoxCollider2D:
   m_EdgeRadius: 0
 --- !u!50 &1797286828495295814
 Rigidbody2D:
-  serializedVersion: 4
+  serializedVersion: 5
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -518,9 +591,9 @@ Rigidbody2D:
   m_Simulated: 1
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
-  m_Mass: 30
-  m_LinearDrag: 0
-  m_AngularDrag: 0.05
+  m_Mass: 0.6
+  m_LinearDamping: 0.5
+  m_AngularDamping: 5
   m_GravityScale: 1
   m_Material: {fileID: 0}
   m_IncludeLayers:
@@ -529,9 +602,9 @@ Rigidbody2D:
   m_ExcludeLayers:
     serializedVersion: 2
     m_Bits: 0
-  m_Interpolate: 0
+  m_Interpolate: 1
   m_SleepingMode: 1
-  m_CollisionDetection: 0
+  m_CollisionDetection: 1
   m_Constraints: 0
 --- !u!233 &6348427575635455485
 HingeJoint2D:
@@ -551,14 +624,14 @@ HingeJoint2D:
   m_Anchor: {x: 2.6956193, y: -0.045528352}
   m_ConnectedAnchor: {x: 1.2000077, y: 0.0705378}
   m_UseConnectedAnchor: 1
-  m_UseMotor: 1
+  m_UseMotor: 0
   m_Motor:
     m_MotorSpeed: 9.1
-    m_MaximumMotorForce: 10000
-  m_UseLimits: 0
+    m_MaximumMotorForce: 150
+  m_UseLimits: 1
   m_AngleLimits:
-    m_LowerAngle: -33.3
-    m_UpperAngle: 88.8
+    m_LowerAngle: -135
+    m_UpperAngle: 135
 --- !u!114 &4185670371750739892
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -602,6 +675,61 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   hinge: {fileID: 0}
   grabber: {fileID: 0}
+--- !u!114 &1125416049551286607
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2056084906716462140}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 716e12aa5dbcba94985759c131365385, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ImpactDamage
+  enableImpactDamage: 1
+  showDamageNumbers: 1
+  showHitFlash: 1
+  enableScreenShake: 1
+  attackMultiplier: 1
+  vulnerabilityMultiplier: 1
+  velocityThreshold: 3
+  damageCooldown: 0.15
+  shakeThreshold: 15
+  shakeIntensity: 0.15
+  shakeDuration: 0.2
+  fighterHealth: {fileID: 0}
+--- !u!1 &2774953751613048429
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1195855854860100842}
+  m_Layer: 6
+  m_Name: Foot
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1195855854860100842
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2774953751613048429}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 2.14, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 4638734291480134768}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2953401847345462619
 GameObject:
   m_ObjectHideFlags: 0
@@ -613,6 +741,8 @@ GameObject:
   - component: {fileID: 663870150452002744}
   - component: {fileID: 2497047012462576365}
   - component: {fileID: 1734090074167383545}
+  - component: {fileID: 5112257465622316358}
+  - component: {fileID: 407876895619885447}
   m_Layer: 8
   m_Name: Hips
   m_TagString: Untagged
@@ -637,6 +767,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 90}
 --- !u!212 &2497047012462576365
 SpriteRenderer:
+  serializedVersion: 2
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -652,6 +783,11 @@ SpriteRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 0
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -673,9 +809,11 @@ SpriteRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
+  m_MaskInteraction: 0
   m_Sprite: {fileID: -9095717837082945937, guid: 207ee8102dd4143d288186ef0be518ee, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 0.5176471}
   m_FlipX: 0
@@ -685,11 +823,10 @@ SpriteRenderer:
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
-  m_MaskInteraction: 0
   m_SpriteSortPoint: 0
 --- !u!50 &1734090074167383545
 Rigidbody2D:
-  serializedVersion: 4
+  serializedVersion: 5
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -699,9 +836,9 @@ Rigidbody2D:
   m_Simulated: 1
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
-  m_Mass: 10
-  m_LinearDrag: 0
-  m_AngularDrag: 0.05
+  m_Mass: 4
+  m_LinearDamping: 0.5
+  m_AngularDamping: 5
   m_GravityScale: 1
   m_Material: {fileID: 0}
   m_IncludeLayers:
@@ -710,10 +847,60 @@ Rigidbody2D:
   m_ExcludeLayers:
     serializedVersion: 2
     m_Bits: 0
-  m_Interpolate: 0
+  m_Interpolate: 1
   m_SleepingMode: 1
-  m_CollisionDetection: 0
+  m_CollisionDetection: 1
   m_Constraints: 4
+--- !u!114 &5112257465622316358
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2953401847345462619}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 716e12aa5dbcba94985759c131365385, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ImpactDamage
+  enableImpactDamage: 1
+  showDamageNumbers: 1
+  showHitFlash: 1
+  enableScreenShake: 1
+  attackMultiplier: 1
+  vulnerabilityMultiplier: 1
+  velocityThreshold: 3
+  damageCooldown: 0.15
+  shakeThreshold: 15
+  shakeIntensity: 0.15
+  shakeDuration: 0.2
+  fighterHealth: {fileID: 0}
+--- !u!233 &407876895619885447
+HingeJoint2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2953401847345462619}
+  m_Enabled: 0
+  serializedVersion: 4
+  m_EnableCollision: 0
+  m_ConnectedRigidBody: {fileID: 0}
+  m_BreakForce: Infinity
+  m_BreakTorque: Infinity
+  m_BreakAction: 3
+  m_AutoConfigureConnectedAnchor: 1
+  m_Anchor: {x: 0, y: 0}
+  m_ConnectedAnchor: {x: 0, y: 4.17}
+  m_UseConnectedAnchor: 1
+  m_UseMotor: 0
+  m_Motor:
+    m_MotorSpeed: 0
+    m_MaximumMotorForce: 10000
+  m_UseLimits: 0
+  m_AngleLimits:
+    m_LowerAngle: 0
+    m_UpperAngle: 359
 --- !u!1 &3925811490311583961
 GameObject:
   m_ObjectHideFlags: 0
@@ -729,6 +916,7 @@ GameObject:
   - component: {fileID: 3925811490311583954}
   - component: {fileID: 8128043841364621753}
   - component: {fileID: 1953332783}
+  - component: {fileID: 4581844748434560680}
   m_Layer: 0
   m_Name: Head
   m_TagString: Head
@@ -753,6 +941,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &3925811490311583965
 SpriteRenderer:
+  serializedVersion: 2
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -768,6 +957,11 @@ SpriteRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 0
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -789,9 +983,11 @@ SpriteRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
+  m_MaskInteraction: 0
   m_Sprite: {fileID: -2413806693520163455, guid: a86470a33a6bf42c4b3595704624658b, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 0.5176471}
   m_FlipX: 0
@@ -801,7 +997,6 @@ SpriteRenderer:
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
-  m_MaskInteraction: 0
   m_SpriteSortPoint: 0
 --- !u!58 &3925811490311583964
 CircleCollider2D:
@@ -841,7 +1036,7 @@ CircleCollider2D:
   m_Radius: 0.5
 --- !u!50 &3925811490311583967
 Rigidbody2D:
-  serializedVersion: 4
+  serializedVersion: 5
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -851,9 +1046,9 @@ Rigidbody2D:
   m_Simulated: 1
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
-  m_Mass: 30
-  m_LinearDrag: 0
-  m_AngularDrag: 0.05
+  m_Mass: 0.8
+  m_LinearDamping: 0.5
+  m_AngularDamping: 5
   m_GravityScale: 1
   m_Material: {fileID: 0}
   m_IncludeLayers:
@@ -862,9 +1057,9 @@ Rigidbody2D:
   m_ExcludeLayers:
     serializedVersion: 2
     m_Bits: 0
-  m_Interpolate: 0
+  m_Interpolate: 1
   m_SleepingMode: 1
-  m_CollisionDetection: 0
+  m_CollisionDetection: 1
   m_Constraints: 0
 --- !u!233 &3925811490311583954
 HingeJoint2D:
@@ -887,11 +1082,11 @@ HingeJoint2D:
   m_UseMotor: 0
   m_Motor:
     m_MotorSpeed: 0
-    m_MaximumMotorForce: 10000
+    m_MaximumMotorForce: 100
   m_UseLimits: 1
   m_AngleLimits:
-    m_LowerAngle: 0
-    m_UpperAngle: 0
+    m_LowerAngle: -40
+    m_UpperAngle: 40
 --- !u!114 &8128043841364621753
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -920,6 +1115,30 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   isGrabbing: 0
+--- !u!114 &4581844748434560680
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3925811490311583961}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 716e12aa5dbcba94985759c131365385, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ImpactDamage
+  enableImpactDamage: 1
+  showDamageNumbers: 1
+  showHitFlash: 1
+  enableScreenShake: 1
+  attackMultiplier: 1
+  vulnerabilityMultiplier: 1
+  velocityThreshold: 3
+  damageCooldown: 0.15
+  shakeThreshold: 15
+  shakeIntensity: 0.15
+  shakeDuration: 0.2
+  fighterHealth: {fileID: 0}
 --- !u!1 &3925811490408253655
 GameObject:
   m_ObjectHideFlags: 0
@@ -931,6 +1150,8 @@ GameObject:
   - component: {fileID: 3925811490408253652}
   - component: {fileID: 3345843426268698739}
   - component: {fileID: 702784829222044165}
+  - component: {fileID: 8463373811033666263}
+  - component: {fileID: 287321982115583354}
   m_Layer: 8
   m_Name: Fighter
   m_TagString: StickMan
@@ -971,7 +1192,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3925811490408253655}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9ed58b735c59bf34aa8c8ee4f482ac02, type: 3}
   m_Name: 
@@ -989,7 +1210,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3925811490408253655}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7c0a5a9c2aebaee41b491f3352191e35, type: 3}
   m_Name: 
@@ -999,6 +1220,54 @@ MonoBehaviour:
   copyCalf: {fileID: 0}
   copyCalf2: {fileID: 0}
   locked: 0
+--- !u!114 &8463373811033666263
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3925811490408253655}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: feb6f6bd035bb344db21a56ace565f34, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FighterTuner
+  fixMassDistribution: 1
+  fixJointLimits: 1
+  fixMotorSettings: 1
+  fixDragAndDamping: 1
+  addMissingComponents: 1
+  massScale: 1
+  torqueScale: 1
+  angularDrag: 5
+  linearDrag: 0.5
+  gravityScale: 1
+--- !u!114 &287321982115583354
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3925811490408253655}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ae5edd12aad1bce4fb387eedade4ab7c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FighterHealth
+  enableHealthSystem: 1
+  showHealthBar: 1
+  enableDebugLog: 0
+  enableKO: 1
+  maxHP: 100
+  currentHP: 0
+  damageReduction: 1
+  healthBarYOffset: 3
+  healthBarWidth: 2.5
+  healthBarHeight: 0.25
+  fullHealthColor: {r: 0.2, g: 0.9, b: 0.3, a: 1}
+  lowHealthColor: {r: 0.9, g: 0.2, b: 0.2, a: 1}
+  backgroundColor: {r: 0.15, g: 0.15, b: 0.15, a: 0.8}
+  healthBarAnchor: {fileID: 3925811490311583966}
 --- !u!1 &4674824483173712151
 GameObject:
   m_ObjectHideFlags: 0
@@ -1017,6 +1286,7 @@ GameObject:
   - component: {fileID: 6470202774124115181}
   - component: {fileID: 1937268947}
   - component: {fileID: 8221338667833992365}
+  - component: {fileID: 789867279488896329}
   m_Layer: 7
   m_Name: Thigh 2
   m_TagString: Untagged
@@ -1041,6 +1311,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: -120}
 --- !u!1971053207 &8703352074312529006
 SpriteShapeRenderer:
+  serializedVersion: 2
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -1056,6 +1327,11 @@ SpriteShapeRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 0
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -1078,11 +1354,12 @@ SpriteShapeRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
-  m_Color: {r: 1, g: 1, b: 1, a: 0.5176471}
   m_MaskInteraction: 0
+  m_Color: {r: 1, g: 1, b: 1, a: 0.5176471}
   m_ShapeTexture: {fileID: 2800000, guid: b281b91a70a624a0da1c43adc1c30c7b, type: 3}
   m_Sprites:
   - {fileID: 21300000, guid: 0ae2b74b1edd14bb18dd7b65ae916a54, type: 3}
@@ -1155,6 +1432,7 @@ MonoBehaviour:
   m_ShadowDetail: 16
   m_ShadowOffset: 0.5
   m_BoundsScale: 2
+  m_UpdateGeometry: 1
   m_Creator: {fileID: 0}
   m_Modifiers: []
   m_ColliderSegment: []
@@ -1207,7 +1485,7 @@ BoxCollider2D:
   m_EdgeRadius: 0
 --- !u!50 &6284880295394363149
 Rigidbody2D:
-  serializedVersion: 4
+  serializedVersion: 5
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -1217,9 +1495,9 @@ Rigidbody2D:
   m_Simulated: 1
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
-  m_Mass: 10
-  m_LinearDrag: 0
-  m_AngularDrag: 0.05
+  m_Mass: 1.5
+  m_LinearDamping: 0.5
+  m_AngularDamping: 5
   m_GravityScale: 1
   m_Material: {fileID: 0}
   m_IncludeLayers:
@@ -1228,9 +1506,9 @@ Rigidbody2D:
   m_ExcludeLayers:
     serializedVersion: 2
     m_Bits: 0
-  m_Interpolate: 0
+  m_Interpolate: 1
   m_SleepingMode: 1
-  m_CollisionDetection: 0
+  m_CollisionDetection: 1
   m_Constraints: 0
 --- !u!233 &6794002259307815298
 HingeJoint2D:
@@ -1250,14 +1528,14 @@ HingeJoint2D:
   m_Anchor: {x: -2.15, y: 0.03}
   m_ConnectedAnchor: {x: -0.16048045, y: -0.004488043}
   m_UseConnectedAnchor: 1
-  m_UseMotor: 1
+  m_UseMotor: 0
   m_Motor:
     m_MotorSpeed: 0
-    m_MaximumMotorForce: 10000
+    m_MaximumMotorForce: 250
   m_UseLimits: 1
   m_AngleLimits:
-    m_LowerAngle: -123.2
-    m_UpperAngle: 51.9
+    m_LowerAngle: -100
+    m_UpperAngle: 80
 --- !u!114 &1730672850601275358
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1314,6 +1592,30 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   hinge: {fileID: 0}
   grabber: {fileID: 0}
+--- !u!114 &789867279488896329
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4674824483173712151}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 716e12aa5dbcba94985759c131365385, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ImpactDamage
+  enableImpactDamage: 1
+  showDamageNumbers: 1
+  showHitFlash: 1
+  enableScreenShake: 1
+  attackMultiplier: 1
+  vulnerabilityMultiplier: 1
+  velocityThreshold: 3
+  damageCooldown: 0.15
+  shakeThreshold: 15
+  shakeIntensity: 0.15
+  shakeDuration: 0.2
+  fighterHealth: {fileID: 0}
 --- !u!1 &4825255068278544924
 GameObject:
   m_ObjectHideFlags: 0
@@ -1331,6 +1633,7 @@ GameObject:
   - component: {fileID: 2991177393039522627}
   - component: {fileID: 1974765376}
   - component: {fileID: 1148168017351872659}
+  - component: {fileID: 5999384124686454725}
   m_Layer: 6
   m_Name: Thigh
   m_TagString: Untagged
@@ -1355,6 +1658,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: -60}
 --- !u!1971053207 &2293953815535013515
 SpriteShapeRenderer:
+  serializedVersion: 2
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -1370,6 +1674,11 @@ SpriteShapeRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 0
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -1392,11 +1701,12 @@ SpriteShapeRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
-  m_Color: {r: 1, g: 1, b: 1, a: 0.5176471}
   m_MaskInteraction: 0
+  m_Color: {r: 1, g: 1, b: 1, a: 0.5176471}
   m_ShapeTexture: {fileID: 2800000, guid: b281b91a70a624a0da1c43adc1c30c7b, type: 3}
   m_Sprites:
   - {fileID: 21300000, guid: 0ae2b74b1edd14bb18dd7b65ae916a54, type: 3}
@@ -1469,6 +1779,7 @@ MonoBehaviour:
   m_ShadowDetail: 16
   m_ShadowOffset: 0.5
   m_BoundsScale: 2
+  m_UpdateGeometry: 1
   m_Creator: {fileID: 0}
   m_Modifiers: []
   m_ColliderSegment: []
@@ -1521,7 +1832,7 @@ BoxCollider2D:
   m_EdgeRadius: 0
 --- !u!50 &334832590312633013
 Rigidbody2D:
-  serializedVersion: 4
+  serializedVersion: 5
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -1531,9 +1842,9 @@ Rigidbody2D:
   m_Simulated: 1
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
-  m_Mass: 10
-  m_LinearDrag: 0
-  m_AngularDrag: 0.05
+  m_Mass: 1.5
+  m_LinearDamping: 0.5
+  m_AngularDamping: 5
   m_GravityScale: 1
   m_Material: {fileID: 0}
   m_IncludeLayers:
@@ -1542,9 +1853,9 @@ Rigidbody2D:
   m_ExcludeLayers:
     serializedVersion: 2
     m_Bits: 0
-  m_Interpolate: 0
+  m_Interpolate: 1
   m_SleepingMode: 1
-  m_CollisionDetection: 0
+  m_CollisionDetection: 1
   m_Constraints: 0
 --- !u!233 &2164199592998883793
 HingeJoint2D:
@@ -1564,14 +1875,14 @@ HingeJoint2D:
   m_Anchor: {x: -2.15, y: 0}
   m_ConnectedAnchor: {x: -0.14865729, y: -0.01599001}
   m_UseConnectedAnchor: 1
-  m_UseMotor: 1
+  m_UseMotor: 0
   m_Motor:
     m_MotorSpeed: 0
-    m_MaximumMotorForce: 10000
+    m_MaximumMotorForce: 250
   m_UseLimits: 1
   m_AngleLimits:
-    m_LowerAngle: -77.1
-    m_UpperAngle: 87.6
+    m_LowerAngle: -100
+    m_UpperAngle: 80
 --- !u!114 &2991177393039522627
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1614,6 +1925,30 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   hinge: {fileID: 0}
   grabber: {fileID: 0}
+--- !u!114 &5999384124686454725
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4825255068278544924}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 716e12aa5dbcba94985759c131365385, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ImpactDamage
+  enableImpactDamage: 1
+  showDamageNumbers: 1
+  showHitFlash: 1
+  enableScreenShake: 1
+  attackMultiplier: 1
+  vulnerabilityMultiplier: 1
+  velocityThreshold: 3
+  damageCooldown: 0.15
+  shakeThreshold: 15
+  shakeIntensity: 0.15
+  shakeDuration: 0.2
+  fighterHealth: {fileID: 0}
 --- !u!1 &4863122994546736853
 GameObject:
   m_ObjectHideFlags: 0
@@ -1634,6 +1969,7 @@ GameObject:
   - component: {fileID: 4473512331126259361}
   - component: {fileID: 5623734141298661447}
   - component: {fileID: 6489625792728948412}
+  - component: {fileID: 6260792308618773392}
   m_Layer: 6
   m_Name: Calf
   m_TagString: Untagged
@@ -1653,11 +1989,13 @@ Transform:
   m_LocalPosition: {x: 2, y: -0.3, z: 0}
   m_LocalScale: {x: 0.6828, y: 0.7882, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 1195855854860100842}
   m_Father: {fileID: 3925811490408253652}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: -75}
 --- !u!1971053207 &8829429129906503121
 SpriteShapeRenderer:
+  serializedVersion: 2
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -1673,6 +2011,11 @@ SpriteShapeRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 0
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -1695,11 +2038,12 @@ SpriteShapeRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
-  m_Color: {r: 1, g: 1, b: 1, a: 0.5176471}
   m_MaskInteraction: 0
+  m_Color: {r: 1, g: 1, b: 1, a: 0.5176471}
   m_ShapeTexture: {fileID: 2800000, guid: b281b91a70a624a0da1c43adc1c30c7b, type: 3}
   m_Sprites:
   - {fileID: 21300000, guid: 0ae2b74b1edd14bb18dd7b65ae916a54, type: 3}
@@ -1772,6 +2116,7 @@ MonoBehaviour:
   m_ShadowDetail: 16
   m_ShadowOffset: 0.5
   m_BoundsScale: 2
+  m_UpdateGeometry: 1
   m_Creator: {fileID: 0}
   m_Modifiers: []
   m_ColliderSegment: []
@@ -1824,7 +2169,7 @@ BoxCollider2D:
   m_EdgeRadius: 0
 --- !u!50 &5807747141117671449
 Rigidbody2D:
-  serializedVersion: 4
+  serializedVersion: 5
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -1834,9 +2179,9 @@ Rigidbody2D:
   m_Simulated: 1
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
-  m_Mass: 30
-  m_LinearDrag: 0
-  m_AngularDrag: 0.05
+  m_Mass: 1
+  m_LinearDamping: 0.5
+  m_AngularDamping: 5
   m_GravityScale: 1
   m_Material: {fileID: 0}
   m_IncludeLayers:
@@ -1845,9 +2190,9 @@ Rigidbody2D:
   m_ExcludeLayers:
     serializedVersion: 2
     m_Bits: 0
-  m_Interpolate: 0
+  m_Interpolate: 1
   m_SleepingMode: 1
-  m_CollisionDetection: 0
+  m_CollisionDetection: 1
   m_Constraints: 0
 --- !u!233 &2711991774041956083
 HingeJoint2D:
@@ -1867,14 +2212,14 @@ HingeJoint2D:
   m_Anchor: {x: -2.26, y: 0}
   m_ConnectedAnchor: {x: 2.600806, y: -0.05465304}
   m_UseConnectedAnchor: 1
-  m_UseMotor: 1
+  m_UseMotor: 0
   m_Motor:
     m_MotorSpeed: 0
-    m_MaximumMotorForce: 10000
+    m_MaximumMotorForce: 200
   m_UseLimits: 1
   m_AngleLimits:
-    m_LowerAngle: -63.23
-    m_UpperAngle: 78.9
+    m_LowerAngle: -128.37
+    m_UpperAngle: 140
 --- !u!114 &1055818350
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1935,7 +2280,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4863122994546736853}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 163a4d434c016484aa90f1896f7d9b9b, type: 3}
   m_Name: 
@@ -1977,7 +2322,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4863122994546736853}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 41c5235d2a3143242a9e251953bcca3b, type: 3}
   m_Name: 
@@ -1986,6 +2331,30 @@ MonoBehaviour:
   joint: {fileID: 5623734141298661447}
   locked: 0
   sfaBool: 0
+--- !u!114 &6260792308618773392
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4863122994546736853}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 716e12aa5dbcba94985759c131365385, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ImpactDamage
+  enableImpactDamage: 1
+  showDamageNumbers: 1
+  showHitFlash: 1
+  enableScreenShake: 1
+  attackMultiplier: 1
+  vulnerabilityMultiplier: 1
+  velocityThreshold: 3
+  damageCooldown: 0.15
+  shakeThreshold: 15
+  shakeIntensity: 0.15
+  shakeDuration: 0.2
+  fighterHealth: {fileID: 0}
 --- !u!1 &5302048824570903443
 GameObject:
   m_ObjectHideFlags: 0
@@ -2007,6 +2376,7 @@ GameObject:
   - component: {fileID: 3555175811595618664}
   - component: {fileID: 52507645438284535}
   - component: {fileID: 3955248718664043083}
+  - component: {fileID: 4905896126413499078}
   m_Layer: 7
   m_Name: Calf 2
   m_TagString: Untagged
@@ -2026,11 +2396,13 @@ Transform:
   m_LocalPosition: {x: -2, y: -0.3, z: 0}
   m_LocalScale: {x: 0.68279976, y: 0.78819996, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 5228535031010725279}
   m_Father: {fileID: 3925811490408253652}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: -105}
 --- !u!1971053207 &6174830324030575024
 SpriteShapeRenderer:
+  serializedVersion: 2
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -2046,6 +2418,11 @@ SpriteShapeRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 0
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -2068,11 +2445,12 @@ SpriteShapeRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
-  m_Color: {r: 1, g: 1, b: 1, a: 0.5176471}
   m_MaskInteraction: 0
+  m_Color: {r: 1, g: 1, b: 1, a: 0.5176471}
   m_ShapeTexture: {fileID: 2800000, guid: b281b91a70a624a0da1c43adc1c30c7b, type: 3}
   m_Sprites:
   - {fileID: 21300000, guid: 0ae2b74b1edd14bb18dd7b65ae916a54, type: 3}
@@ -2145,6 +2523,7 @@ MonoBehaviour:
   m_ShadowDetail: 16
   m_ShadowOffset: 0.5
   m_BoundsScale: 2
+  m_UpdateGeometry: 1
   m_Creator: {fileID: 0}
   m_Modifiers: []
   m_ColliderSegment: []
@@ -2197,7 +2576,7 @@ BoxCollider2D:
   m_EdgeRadius: 0
 --- !u!50 &1121742210243013613
 Rigidbody2D:
-  serializedVersion: 4
+  serializedVersion: 5
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -2207,9 +2586,9 @@ Rigidbody2D:
   m_Simulated: 1
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
-  m_Mass: 30
-  m_LinearDrag: 0
-  m_AngularDrag: 0.05
+  m_Mass: 1
+  m_LinearDamping: 0.5
+  m_AngularDamping: 5
   m_GravityScale: 1
   m_Material: {fileID: 0}
   m_IncludeLayers:
@@ -2218,9 +2597,9 @@ Rigidbody2D:
   m_ExcludeLayers:
     serializedVersion: 2
     m_Bits: 0
-  m_Interpolate: 0
+  m_Interpolate: 1
   m_SleepingMode: 1
-  m_CollisionDetection: 0
+  m_CollisionDetection: 1
   m_Constraints: 0
 --- !u!233 &8319999397155192912
 HingeJoint2D:
@@ -2240,14 +2619,14 @@ HingeJoint2D:
   m_Anchor: {x: -2.26, y: 0}
   m_ConnectedAnchor: {x: 2.6008065, y: 0.054653123}
   m_UseConnectedAnchor: 1
-  m_UseMotor: 1
+  m_UseMotor: 0
   m_Motor:
     m_MotorSpeed: 0
-    m_MaximumMotorForce: 10000
+    m_MaximumMotorForce: 200
   m_UseLimits: 1
   m_AngleLimits:
-    m_LowerAngle: 74.8
-    m_UpperAngle: -49.3
+    m_LowerAngle: -128.37
+    m_UpperAngle: 140
 --- !u!114 &8583806490200274701
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2323,7 +2702,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5302048824570903443}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 163a4d434c016484aa90f1896f7d9b9b, type: 3}
   m_Name: 
@@ -2365,7 +2744,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5302048824570903443}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 41c5235d2a3143242a9e251953bcca3b, type: 3}
   m_Name: 
@@ -2374,6 +2753,30 @@ MonoBehaviour:
   joint: {fileID: 52507645438284535}
   locked: 0
   sfaBool: 0
+--- !u!114 &4905896126413499078
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5302048824570903443}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 716e12aa5dbcba94985759c131365385, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ImpactDamage
+  enableImpactDamage: 1
+  showDamageNumbers: 1
+  showHitFlash: 1
+  enableScreenShake: 1
+  attackMultiplier: 1
+  vulnerabilityMultiplier: 1
+  velocityThreshold: 3
+  damageCooldown: 0.15
+  shakeThreshold: 15
+  shakeIntensity: 0.15
+  shakeDuration: 0.2
+  fighterHealth: {fileID: 0}
 --- !u!1 &5676322422949576517
 GameObject:
   m_ObjectHideFlags: 0
@@ -2390,6 +2793,7 @@ GameObject:
   - component: {fileID: 5282678069597120188}
   - component: {fileID: 2793624039097368801}
   - component: {fileID: 1165716680515235518}
+  - component: {fileID: 241450426721602102}
   m_Layer: 8
   m_Name: Spine
   m_TagString: Spine
@@ -2414,6 +2818,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 90}
 --- !u!1971053207 &5091971070900013938
 SpriteShapeRenderer:
+  serializedVersion: 2
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -2429,6 +2834,11 @@ SpriteShapeRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 0
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -2451,11 +2861,12 @@ SpriteShapeRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
-  m_Color: {r: 1, g: 1, b: 1, a: 0.5176471}
   m_MaskInteraction: 0
+  m_Color: {r: 1, g: 1, b: 1, a: 0.5176471}
   m_ShapeTexture: {fileID: 2800000, guid: b281b91a70a624a0da1c43adc1c30c7b, type: 3}
   m_Sprites:
   - {fileID: 21300000, guid: 0ae2b74b1edd14bb18dd7b65ae916a54, type: 3}
@@ -2528,6 +2939,7 @@ MonoBehaviour:
   m_ShadowDetail: 16
   m_ShadowOffset: 0.5
   m_BoundsScale: 2
+  m_UpdateGeometry: 1
   m_Creator: {fileID: 0}
   m_Modifiers: []
   m_ColliderSegment: []
@@ -2580,7 +2992,7 @@ BoxCollider2D:
   m_EdgeRadius: 0
 --- !u!50 &1554581600600707696
 Rigidbody2D:
-  serializedVersion: 4
+  serializedVersion: 5
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -2590,9 +3002,9 @@ Rigidbody2D:
   m_Simulated: 1
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
-  m_Mass: 20
-  m_LinearDrag: 0
-  m_AngularDrag: 0.005
+  m_Mass: 3
+  m_LinearDamping: 0.5
+  m_AngularDamping: 5
   m_GravityScale: 1
   m_Material: {fileID: 0}
   m_IncludeLayers:
@@ -2601,9 +3013,9 @@ Rigidbody2D:
   m_ExcludeLayers:
     serializedVersion: 2
     m_Bits: 0
-  m_Interpolate: 0
+  m_Interpolate: 1
   m_SleepingMode: 1
-  m_CollisionDetection: 0
+  m_CollisionDetection: 1
   m_Constraints: 0
 --- !u!114 &5282678069597120188
 MonoBehaviour:
@@ -2639,11 +3051,11 @@ HingeJoint2D:
   m_UseMotor: 0
   m_Motor:
     m_MotorSpeed: 0
-    m_MaximumMotorForce: 10000
-  m_UseLimits: 0
+    m_MaximumMotorForce: 300
+  m_UseLimits: 1
   m_AngleLimits:
-    m_LowerAngle: 0
-    m_UpperAngle: 359
+    m_LowerAngle: -25
+    m_UpperAngle: 25
 --- !u!233 &1165716680515235518
 HingeJoint2D:
   m_ObjectHideFlags: 0
@@ -2670,6 +3082,30 @@ HingeJoint2D:
   m_AngleLimits:
     m_LowerAngle: -10
     m_UpperAngle: 13
+--- !u!114 &241450426721602102
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5676322422949576517}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 716e12aa5dbcba94985759c131365385, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ImpactDamage
+  enableImpactDamage: 1
+  showDamageNumbers: 1
+  showHitFlash: 1
+  enableScreenShake: 1
+  attackMultiplier: 1
+  vulnerabilityMultiplier: 1
+  velocityThreshold: 3
+  damageCooldown: 0.15
+  shakeThreshold: 15
+  shakeIntensity: 0.15
+  shakeDuration: 0.2
+  fighterHealth: {fileID: 0}
 --- !u!1 &7710870260465826843
 GameObject:
   m_ObjectHideFlags: 0
@@ -2689,6 +3125,7 @@ GameObject:
   - component: {fileID: 7686219860018407223}
   - component: {fileID: 3752373433393986833}
   - component: {fileID: 1231162633721074912}
+  - component: {fileID: 6875478016584610661}
   m_Layer: 7
   m_Name: Lower Arm 2
   m_TagString: Untagged
@@ -2713,6 +3150,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 110}
 --- !u!1971053207 &6259737886458671125
 SpriteShapeRenderer:
+  serializedVersion: 2
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -2728,6 +3166,11 @@ SpriteShapeRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 0
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -2750,11 +3193,12 @@ SpriteShapeRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
-  m_Color: {r: 1, g: 1, b: 1, a: 0.5176471}
   m_MaskInteraction: 0
+  m_Color: {r: 1, g: 1, b: 1, a: 0.5176471}
   m_ShapeTexture: {fileID: 2800000, guid: b281b91a70a624a0da1c43adc1c30c7b, type: 3}
   m_Sprites:
   - {fileID: 21300000, guid: 0ae2b74b1edd14bb18dd7b65ae916a54, type: 3}
@@ -2827,6 +3271,7 @@ MonoBehaviour:
   m_ShadowDetail: 16
   m_ShadowOffset: 0.5
   m_BoundsScale: 2
+  m_UpdateGeometry: 1
   m_Creator: {fileID: 0}
   m_Modifiers: []
   m_ColliderSegment: []
@@ -2879,7 +3324,7 @@ BoxCollider2D:
   m_EdgeRadius: 0
 --- !u!50 &7439244591254356543
 Rigidbody2D:
-  serializedVersion: 4
+  serializedVersion: 5
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -2889,9 +3334,9 @@ Rigidbody2D:
   m_Simulated: 1
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
-  m_Mass: 30
-  m_LinearDrag: 0
-  m_AngularDrag: 0.05
+  m_Mass: 0.4
+  m_LinearDamping: 0.5
+  m_AngularDamping: 5
   m_GravityScale: 1
   m_Material: {fileID: 0}
   m_IncludeLayers:
@@ -2900,9 +3345,9 @@ Rigidbody2D:
   m_ExcludeLayers:
     serializedVersion: 2
     m_Bits: 0
-  m_Interpolate: 0
+  m_Interpolate: 1
   m_SleepingMode: 1
-  m_CollisionDetection: 0
+  m_CollisionDetection: 1
   m_Constraints: 0
 --- !u!233 &6379588011614286108
 HingeJoint2D:
@@ -2922,14 +3367,14 @@ HingeJoint2D:
   m_Anchor: {x: 2.5, y: 0}
   m_ConnectedAnchor: {x: -2.3682039, y: -0.011231945}
   m_UseConnectedAnchor: 1
-  m_UseMotor: 1
+  m_UseMotor: 0
   m_Motor:
     m_MotorSpeed: 0
-    m_MaximumMotorForce: 10000
-  m_UseLimits: 0
+    m_MaximumMotorForce: 120
+  m_UseLimits: 1
   m_AngleLimits:
-    m_LowerAngle: -13.1
-    m_UpperAngle: 144.4
+    m_LowerAngle: 40.14
+    m_UpperAngle: 324.04
 --- !u!114 &1932156133
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3023,6 +3468,30 @@ SpringJoint2D:
   m_Distance: 3.126964
   m_DampingRatio: 0
   m_Frequency: 100
+--- !u!114 &6875478016584610661
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7710870260465826843}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 716e12aa5dbcba94985759c131365385, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ImpactDamage
+  enableImpactDamage: 1
+  showDamageNumbers: 1
+  showHitFlash: 1
+  enableScreenShake: 1
+  attackMultiplier: 1
+  vulnerabilityMultiplier: 1
+  velocityThreshold: 3
+  damageCooldown: 0.15
+  shakeThreshold: 15
+  shakeIntensity: 0.15
+  shakeDuration: 0.2
+  fighterHealth: {fileID: 0}
 --- !u!1 &8595136555145086637
 GameObject:
   m_ObjectHideFlags: 0
@@ -3042,6 +3511,7 @@ GameObject:
   - component: {fileID: 60289530657379555}
   - component: {fileID: 5843925305743271509}
   - component: {fileID: 2978359849377092657}
+  - component: {fileID: 6206790606189280761}
   m_Layer: 6
   m_Name: 'Lower Arm '
   m_TagString: Untagged
@@ -3066,6 +3536,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 70}
 --- !u!1971053207 &7161717042304804315
 SpriteShapeRenderer:
+  serializedVersion: 2
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -3081,6 +3552,11 @@ SpriteShapeRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 0
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -3103,11 +3579,12 @@ SpriteShapeRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
-  m_Color: {r: 1, g: 1, b: 1, a: 0.5176471}
   m_MaskInteraction: 0
+  m_Color: {r: 1, g: 1, b: 1, a: 0.5176471}
   m_ShapeTexture: {fileID: 2800000, guid: b281b91a70a624a0da1c43adc1c30c7b, type: 3}
   m_Sprites:
   - {fileID: 21300000, guid: 0ae2b74b1edd14bb18dd7b65ae916a54, type: 3}
@@ -3180,6 +3657,7 @@ MonoBehaviour:
   m_ShadowDetail: 16
   m_ShadowOffset: 0.5
   m_BoundsScale: 2
+  m_UpdateGeometry: 1
   m_Creator: {fileID: 0}
   m_Modifiers: []
   m_ColliderSegment: []
@@ -3232,7 +3710,7 @@ BoxCollider2D:
   m_EdgeRadius: 0
 --- !u!50 &4380315830997014682
 Rigidbody2D:
-  serializedVersion: 4
+  serializedVersion: 5
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -3242,9 +3720,9 @@ Rigidbody2D:
   m_Simulated: 1
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
-  m_Mass: 30
-  m_LinearDrag: 0
-  m_AngularDrag: 0.05
+  m_Mass: 0.4
+  m_LinearDamping: 0.5
+  m_AngularDamping: 5
   m_GravityScale: 1
   m_Material: {fileID: 0}
   m_IncludeLayers:
@@ -3253,9 +3731,9 @@ Rigidbody2D:
   m_ExcludeLayers:
     serializedVersion: 2
     m_Bits: 0
-  m_Interpolate: 0
+  m_Interpolate: 1
   m_SleepingMode: 1
-  m_CollisionDetection: 0
+  m_CollisionDetection: 1
   m_Constraints: 0
 --- !u!233 &5225688472565310063
 HingeJoint2D:
@@ -3275,14 +3753,14 @@ HingeJoint2D:
   m_Anchor: {x: 2.6956193, y: -0.045528352}
   m_ConnectedAnchor: {x: -2.1664295, y: -0.0041781478}
   m_UseConnectedAnchor: 1
-  m_UseMotor: 1
+  m_UseMotor: 0
   m_Motor:
     m_MotorSpeed: 0
-    m_MaximumMotorForce: 10000
-  m_UseLimits: 0
+    m_MaximumMotorForce: 120
+  m_UseLimits: 1
   m_AngleLimits:
-    m_LowerAngle: -110.1
-    m_UpperAngle: 53.9
+    m_LowerAngle: 40.14
+    m_UpperAngle: 324.04
 --- !u!114 &2036438274
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3376,3 +3854,27 @@ SpringJoint2D:
   m_Distance: 3.8418746
   m_DampingRatio: 0
   m_Frequency: 100
+--- !u!114 &6206790606189280761
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8595136555145086637}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 716e12aa5dbcba94985759c131365385, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ImpactDamage
+  enableImpactDamage: 1
+  showDamageNumbers: 1
+  showHitFlash: 1
+  enableScreenShake: 1
+  attackMultiplier: 1
+  vulnerabilityMultiplier: 1
+  velocityThreshold: 3
+  damageCooldown: 0.15
+  shakeThreshold: 15
+  shakeIntensity: 0.15
+  shakeDuration: 0.2
+  fighterHealth: {fileID: 0}
