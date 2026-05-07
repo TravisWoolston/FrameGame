@@ -146,10 +146,14 @@ public class ImpactDamage : MonoBehaviour
         // Only process hits from opponents (different parent = different fighter)
         ImpactDamage otherLimb = collision.gameObject.GetComponent<ImpactDamage>();
         if (otherLimb == null) return;
+        if (!otherLimb.enableImpactDamage) return;
 
         // Don't damage yourself — check if same fighter
         if (otherLimb.fighterHealth == this.fighterHealth) return;
         if (fighterHealth == null) return;
+
+        LimbMoveIntent attackerIntent = otherLimb.GetComponent<LimbMoveIntent>();
+        LimbMoveIntent defenderIntent = GetComponent<LimbMoveIntent>();
 
         // Calculate damage from physics
         float relativeSpeed = collision.relativeVelocity.magnitude;
@@ -158,10 +162,16 @@ public class ImpactDamage : MonoBehaviour
         float attackerMass = otherLimb.rb != null ? otherLimb.rb.mass : 1f;
         float rawDamage = relativeSpeed * attackerMass;
         float finalDamage = rawDamage * otherLimb.attackMultiplier * this.vulnerabilityMultiplier;
+        if (attackerIntent != null)
+            finalDamage *= attackerIntent.OutgoingDamageMultiplier;
+        if (defenderIntent != null)
+            finalDamage *= defenderIntent.IncomingDamageMultiplier;
 
         // Apply damage to this fighter's health
         fighterHealth.TakeDamage(finalDamage);
         lastDamageTime = Time.time;
+
+        ApplyStrikeImpulse(collision, attackerIntent);
 
         // Visual feedback
         if (showHitFlash)
@@ -197,6 +207,28 @@ public class ImpactDamage : MonoBehaviour
             spriteRenderer.color = flashColor;
         else if (ssRenderer != null)
             ssRenderer.color = flashColor;
+    }
+
+    void ApplyStrikeImpulse(Collision2D collision, LimbMoveIntent attackerIntent)
+    {
+        if (attackerIntent == null || !attackerIntent.IsActiveStrike) return;
+        if (rb == null || attackerIntent.OutgoingImpulse <= 0f) return;
+
+        Rigidbody2D attackerRb = collision.gameObject.GetComponent<Rigidbody2D>();
+        Vector2 attackerPos = attackerRb != null
+            ? attackerRb.worldCenterOfMass
+            : (Vector2)collision.gameObject.transform.position;
+        Vector2 direction = rb.worldCenterOfMass - attackerPos;
+
+        if (direction.sqrMagnitude < 0.001f && collision.contactCount > 0)
+            direction = rb.worldCenterOfMass - collision.GetContact(0).point;
+
+        if (direction.sqrMagnitude < 0.001f)
+            direction = collision.relativeVelocity;
+
+        if (direction.sqrMagnitude < 0.001f) return;
+
+        rb.AddForce(direction.normalized * attackerIntent.OutgoingImpulse, ForceMode2D.Impulse);
     }
 
     void RestoreColor()

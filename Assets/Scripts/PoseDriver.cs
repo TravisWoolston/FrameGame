@@ -37,6 +37,16 @@ public class PoseDriver : MonoBehaviour
     [Tooltip("Deadzone in degrees. Below this error, the motor relaxes. Prevents jitter at rest.")]
     public float deadzone = 0.5f;
 
+    [Tooltip("Allow this driver to chase target angles outside the driven joint's normal limits.")]
+    public bool ignoreTargetJointLimits = false;
+
+    [Header("=== Runtime Multipliers ===")]
+    [Tooltip("Temporary speed multiplier used by turn intents such as strikes.")]
+    public float runtimeSpeedMultiplier = 1f;
+
+    [Tooltip("Temporary torque multiplier used by turn intents such as strikes.")]
+    public float runtimeTorqueMultiplier = 1f;
+
     [Header("=== References ===")]
     [Tooltip("The HingeJoint2D on this live limb that gets driven")]
     public HingeJoint2D drivenJoint;
@@ -49,6 +59,7 @@ public class PoseDriver : MonoBehaviour
     private bool initialized = false;
     private JointAngleLimits2D originalLimits;
     private bool hadOriginalLimits;
+    private float originalMotorTorque = 150f;
     private int settlingFrames = 30; // ~0.5 sec at 50Hz physics — let figure settle before driving
 
     void Start()
@@ -61,6 +72,7 @@ public class PoseDriver : MonoBehaviour
             // Store original limits so we don't overwrite them
             originalLimits = drivenJoint.limits;
             hadOriginalLimits = drivenJoint.useLimits;
+            originalMotorTorque = Mathf.Max(1f, drivenJoint.motor.maxMotorTorque);
             initialized = true;
         }
     }
@@ -83,8 +95,10 @@ public class PoseDriver : MonoBehaviour
         // operates in this same space, so the sign is always correct.
         // (World-space eulerAngles caused winding because the motor's direction
         // doesn't always correspond to the world rotation direction.)
-        float targetAngle = targetJoint.jointAngle;
-        float currentAngle = drivenJoint.jointAngle;
+        float targetAngle = NormalizeAngle(targetJoint.jointAngle);
+        float currentAngle = NormalizeAngle(drivenJoint.jointAngle);
+        if (drivenJoint.useLimits && !ignoreTargetJointLimits)
+            targetAngle = Mathf.Clamp(targetAngle, drivenJoint.limits.min, drivenJoint.limits.max);
         float error = Mathf.DeltaAngle(currentAngle, targetAngle);
 
         // Deadzone — don't fight tiny errors (prevents jitter at rest)
@@ -101,16 +115,38 @@ public class PoseDriver : MonoBehaviour
         // Negative sign because we want to resist current motion (dampen).
         float damping = -drivenJoint.jointSpeed * Kd;
 
-        // PD output: proportional drives toward target, damping prevents overshoot
-        float motorSpeed = Kp * error + damping;
-        motorSpeed = Mathf.Clamp(motorSpeed, -maxMotorSpeed, maxMotorSpeed);
+        float speedMultiplier = Mathf.Max(0.01f, runtimeSpeedMultiplier);
+        float torqueMultiplier = Mathf.Max(0.01f, runtimeTorqueMultiplier);
+
+        // PD output: proportional drives toward target, damping prevents overshoot.
+        // Runtime multipliers let strikes move faster without changing base tuning.
+        float motorSpeed = (Kp * error + damping) * speedMultiplier;
+        float speedLimit = Mathf.Max(1f, maxMotorSpeed * speedMultiplier);
+        motorSpeed = Mathf.Clamp(motorSpeed, -speedLimit, speedLimit);
 
         // Apply to motor — ensure torque is high enough to move the limb
         JointMotor2D motor = drivenJoint.motor;
         motor.motorSpeed = motorSpeed;
-        motor.maxMotorTorque = Mathf.Max(motor.maxMotorTorque, 150f);
+        motor.maxMotorTorque = Mathf.Max(originalMotorTorque, 150f) * torqueMultiplier;
         drivenJoint.motor = motor;
         drivenJoint.useMotor = true;
+    }
+
+    public void SetRuntimeMultipliers(float speedMultiplier, float torqueMultiplier)
+    {
+        runtimeSpeedMultiplier = Mathf.Max(0.01f, speedMultiplier);
+        runtimeTorqueMultiplier = Mathf.Max(0.01f, torqueMultiplier);
+    }
+
+    public void ResetRuntimeMultipliers()
+    {
+        runtimeSpeedMultiplier = 1f;
+        runtimeTorqueMultiplier = 1f;
+    }
+
+    private float NormalizeAngle(float angle)
+    {
+        return Mathf.Repeat(angle + 180f, 360f) - 180f;
     }
 
     /// <summary>
@@ -122,6 +158,7 @@ public class PoseDriver : MonoBehaviour
         {
             originalLimits = drivenJoint.limits;
             hadOriginalLimits = drivenJoint.useLimits;
+            originalMotorTorque = Mathf.Max(1f, drivenJoint.motor.maxMotorTorque);
         }
     }
 

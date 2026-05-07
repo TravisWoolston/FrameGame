@@ -1213,7 +1213,7 @@ GameObject:
   - component: {fileID: 8463373811033666263}
   - component: {fileID: 287321982115583354}
   m_Layer: 8
-  m_Name: Fighter
+  m_Name: Fighter 1
   m_TagString: StickMan
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

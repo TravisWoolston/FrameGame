@@ -243,6 +243,19 @@ MonoBehaviour:
   dampingRatio: 0.8
   frequency: 5
   clickRadius: 2
+  rootFallbackSelectionRadius: 1.75
+  limitDraggedLimbMotion: 1
+  maxLimbAdjustment: 1.4
+  jointReachPadding: 0.25
+  anchorRootWhileDragging: 1
+  anchorParentWhileDragging: 1
+  anchorPlantedFeetWhileDragging: 1
+  rootAnchorForce: 2500
+  parentAnchorForce: 1800
+  plantedFootAnchorForce: 2200
+  anchoredFootGroundTolerance: 0.35
+  anchorDampingRatio: 1
+  anchorFrequency: 8
   freezeReplay: {fileID: 138340146}
   freezeReplayV2: {fileID: 0}
 --- !u!114 &138340149
@@ -1149,6 +1162,9 @@ MonoBehaviour:
   Kd: 8
   maxMotorSpeed: 800
   deadzone: 0.5
+  ignoreTargetJointLimits: 0
+  runtimeSpeedMultiplier: 1
+  runtimeTorqueMultiplier: 1
   drivenJoint: {fileID: 0}
   targetJoint: {fileID: 0}
 --- !u!114 &1633812804
@@ -1165,20 +1181,65 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::FreezeReplayV2
   playerPrefab: {fileID: 3925811490408253655, guid: 93546b6d5277eb7498c4e8537657bdf5, type: 3}
   frozenCopyColor: {r: 0.3, g: 1, b: 0.6, a: 0.5}
+  limitFrozenRootMovement: 1
+  maxRootMovePerSnapshot: 2
   turnDuration: 2
   commitKey: 32
   replayKey: 114
   resetKey: 113
   enableHealthSnapshots: 1
   replayOnCapture: 0
-  enableProceduralWalking: 1
   spawnOffset: {x: 0, y: -18}
-  groundLayer:
-    serializedVersion: 2
-    m_Bits: 0
   poseKp: 40
   poseKd: 8
   poseMaxSpeed: 800
+  ignoreJointLimits: 1
+  enablePhysicsPoseAssist: 1
+  poseAssistSpring: 35
+  poseAssistDamping: 8
+  maxPoseAssistForce: 500
+  poseAssistAngularSpring: 8
+  poseAssistAngularDamping: 1.2
+  maxPoseAssistTorque: 350
+  enableAdaptiveLegAssist: 1
+  groundMask:
+    serializedVersion: 2
+    m_Bits: 8
+  minStepDistance: 0.35
+  groundProbeHeight: 3
+  groundProbeDistance: 6
+  footGroundOffset: 0.15
+  legStepSpring: 55
+  legPlantForce: 45
+  legLiftForce: 70
+  maxLegAssistForce: 400
+  enablePlantedFootStability: 1
+  plantedFootGroundTolerance: 0.35
+  plantedFootSpring: 120
+  plantedFootDamping: 18
+  maxPlantedFootForce: 900
+  enablePosePreviewLoop: 1
+  disableDamageDuringPreview: 1
+  previewLoopDuration: 0
+  enableAutoWalkFromHipTarget: 1
+  walkMinHipTravel: 0.35
+  walkMaxHipGroundDistance: 3.5
+  walkStepLead: 0.85
+  walkFootSpacing: 0.45
+  walkStepLift: 0.8
+  walkFootSpring: 95
+  walkFootDamping: 12
+  maxWalkFootForce: 750
+  showMovePlanningUI: 1
+  tintFrozenLimbsByIntent: 1
+  defaultLegsToAuto: 1
+  moveUIPanelOffset: {x: 12, y: 12}
+  moveUIPanelWidth: 400
+  strikeRecoverySnapshots: 2
+  strikeVelocityMultiplier: 2
+  strikeDamageMultiplier: 1.5
+  strikeImpactImpulse: 8
+  blockIncomingDamageMultiplier: 0.75
   currentPhase: 0
   turnCount: 0
   playerObj: {fileID: 0}
@@ -1204,6 +1265,19 @@ MonoBehaviour:
   dampingRatio: 1
   frequency: 5
   clickRadius: 1.5
+  rootFallbackSelectionRadius: 1.75
+  limitDraggedLimbMotion: 1
+  maxLimbAdjustment: 1.4
+  jointReachPadding: 0.25
+  anchorRootWhileDragging: 1
+  anchorParentWhileDragging: 1
+  anchorPlantedFeetWhileDragging: 1
+  rootAnchorForce: 2500
+  parentAnchorForce: 1800
+  plantedFootAnchorForce: 2200
+  anchoredFootGroundTolerance: 0.35
+  anchorDampingRatio: 1
+  anchorFrequency: 8
   freezeReplay: {fileID: 0}
   freezeReplayV2: {fileID: 1633812804}
 --- !u!1 &1648816695 stripped
@@ -1251,6 +1325,19 @@ MonoBehaviour:
   dampingRatio: 0.8
   frequency: 5
   clickRadius: 2
+  rootFallbackSelectionRadius: 1.75
+  limitDraggedLimbMotion: 1
+  maxLimbAdjustment: 1.4
+  jointReachPadding: 0.25
+  anchorRootWhileDragging: 1
+  anchorParentWhileDragging: 1
+  anchorPlantedFeetWhileDragging: 1
+  rootAnchorForce: 2500
+  parentAnchorForce: 1800
+  plantedFootAnchorForce: 2200
+  anchoredFootGroundTolerance: 0.35
+  anchorDampingRatio: 1
+  anchorFrequency: 8
   freezeReplay: {fileID: 1648816701}
   freezeReplayV2: {fileID: 0}
 --- !u!114 &1648816698
@@ -1286,17 +1373,21 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 2284447971625441649, guid: f2c3519dcd1a96a418c2cdfcec23040c, type: 3}
+      propertyPath: orthographic size
+      value: 20.03
+      objectReference: {fileID: 0}
     - target: {fileID: 4890524425609136935, guid: f2c3519dcd1a96a418c2cdfcec23040c, type: 3}
       propertyPath: m_Name
       value: Main Camera (1)
       objectReference: {fileID: 0}
     - target: {fileID: 8998557635205397693, guid: f2c3519dcd1a96a418c2cdfcec23040c, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0
+      value: 14.7
       objectReference: {fileID: 0}
     - target: {fileID: 8998557635205397693, guid: f2c3519dcd1a96a418c2cdfcec23040c, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0
+      value: -21
       objectReference: {fileID: 0}
     - target: {fileID: 8998557635205397693, guid: f2c3519dcd1a96a418c2cdfcec23040c, type: 3}
       propertyPath: m_LocalPosition.z
