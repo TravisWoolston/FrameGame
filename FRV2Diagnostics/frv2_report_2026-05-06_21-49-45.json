@@ -1,0 +1,36 @@
+{
+  "timestamp": "2026-05-06_21-49-45",
+  "turnsRecorded": 0,
+  "settings": {
+    "poseKp": 2000.000,
+    "poseKd": 500.000,
+    "poseMaxSpeed": 5000.000,
+    "ignoreJointLimits": true,
+    "enablePhysicsPoseAssist": true,
+    "poseAssistOnlyRootAndUnjointedBodies": true,
+    "poseAssistSpring": 35.000,
+    "poseAssistDamping": 8.000,
+    "maxPoseAssistForce": 1000.000,
+    "poseAssistAngularSpring": 8.000,
+    "poseAssistAngularDamping": 1.200,
+    "maxPoseAssistTorque": 350.000,
+    "usePlantedFootJoints": true,
+    "plantedFootGroundTolerance": 0.350,
+    "plantedFootJointFrequency": 5.000,
+    "plantedFootJointBreakForce": 200.000,
+    "plantedFootJointBreakTorque": 1200.000,
+    "enableAutoWalkFromHipTarget": true,
+    "useJointMotorsForAutoWalk": true,
+    "walkMinHipTravel": 0.350,
+    "walkStepLead": 0.850,
+    "walkFootSpacing": 0.450,
+    "walkStepLift": 0.800,
+    "walkFootSpring": 95.000,
+    "maxWalkFootForce": 750.000,
+    "turnDuration": 0.500
+  },
+  "turns": [
+  ],
+  "suggestions": [
+  ]
+}

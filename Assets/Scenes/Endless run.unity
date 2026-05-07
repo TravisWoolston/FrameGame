@@ -426,6 +426,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 0}
     - target: {fileID: 2087833830571840529, guid: 93546b6d5277eb7498c4e8537657bdf5, type: 3}
+      propertyPath: m_ConnectedAnchor.x
+      value: 1.1022756
+      objectReference: {fileID: 0}
+    - target: {fileID: 2087833830571840529, guid: 93546b6d5277eb7498c4e8537657bdf5, type: 3}
       propertyPath: m_ConnectedAnchor.y
       value: -0.12459947
       objectReference: {fileID: 0}
@@ -456,6 +460,10 @@ PrefabInstance:
     - target: {fileID: 3248050303724389868, guid: 93546b6d5277eb7498c4e8537657bdf5, type: 3}
       propertyPath: m_Creator
       value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 3925811490311583954, guid: 93546b6d5277eb7498c4e8537657bdf5, type: 3}
+      propertyPath: m_ConnectedAnchor.x
+      value: 2.7169793
       objectReference: {fileID: 0}
     - target: {fileID: 3925811490311583954, guid: 93546b6d5277eb7498c4e8537657bdf5, type: 3}
       propertyPath: m_ConnectedAnchor.y
@@ -507,11 +515,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5225688472565310063, guid: 93546b6d5277eb7498c4e8537657bdf5, type: 3}
       propertyPath: m_ConnectedAnchor.x
-      value: -2.1664336
+      value: -2.1664333
       objectReference: {fileID: 0}
     - target: {fileID: 5225688472565310063, guid: 93546b6d5277eb7498c4e8537657bdf5, type: 3}
       propertyPath: m_ConnectedAnchor.y
-      value: -0.0041746693
+      value: -0.004174669
       objectReference: {fileID: 0}
     - target: {fileID: 6284463787476130440, guid: 93546b6d5277eb7498c4e8537657bdf5, type: 3}
       propertyPath: m_Creator
@@ -531,7 +539,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6379588011614286108, guid: 93546b6d5277eb7498c4e8537657bdf5, type: 3}
       propertyPath: m_ConnectedAnchor.y
-      value: -0.011234062
+      value: -0.011234063
+      objectReference: {fileID: 0}
+    - target: {fileID: 6794002259307815298, guid: 93546b6d5277eb7498c4e8537657bdf5, type: 3}
+      propertyPath: m_ConnectedAnchor.x
+      value: -0.16048045
       objectReference: {fileID: 0}
     - target: {fileID: 6794002259307815298, guid: 93546b6d5277eb7498c4e8537657bdf5, type: 3}
       propertyPath: m_ConnectedAnchor.y
@@ -548,6 +560,14 @@ PrefabInstance:
     - target: {fileID: 8463373811033666263, guid: 93546b6d5277eb7498c4e8537657bdf5, type: 3}
       propertyPath: fixJointLimits
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8699320474562780473, guid: 93546b6d5277eb7498c4e8537657bdf5, type: 3}
+      propertyPath: m_ConnectedAnchor.x
+      value: -2.2060294
+      objectReference: {fileID: 0}
+    - target: {fileID: 8699320474562780473, guid: 93546b6d5277eb7498c4e8537657bdf5, type: 3}
+      propertyPath: m_ConnectedAnchor.y
+      value: 0.021900268
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -825,7 +845,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_MaskInteraction: 0
-  m_Sprite: {fileID: -6787941940245304932, guid: aab3486c5b1bf234e87ec980eefa618f, type: 3}
+  m_Sprite: {fileID: -7546100479452484723, guid: 314b318f3297a3143982a9e538d8336a, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -1119,9 +1139,11 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1633812802}
-  - component: {fileID: 1633812804}
   - component: {fileID: 1633812803}
   - component: {fileID: 1633812805}
+  - component: {fileID: 1633812806}
+  - component: {fileID: 1633812807}
+  - component: {fileID: 1633812808}
   m_Layer: 0
   m_Name: FR2
   m_TagString: Untagged
@@ -1157,8 +1179,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PoseDriver
   enablePoseDriver: 1
-  showDebugGizmo: 0
-  Kp: 40
+  showDebugGizmo: 1
+  Kp: 5000
   Kd: 8
   maxMotorSpeed: 800
   deadzone: 0.5
@@ -1167,84 +1189,6 @@ MonoBehaviour:
   runtimeTorqueMultiplier: 1
   drivenJoint: {fileID: 0}
   targetJoint: {fileID: 0}
---- !u!114 &1633812804
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1633812800}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 810e2d8b4488b9d44bbd7851709a5bb8, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::FreezeReplayV2
-  playerPrefab: {fileID: 3925811490408253655, guid: 93546b6d5277eb7498c4e8537657bdf5, type: 3}
-  frozenCopyColor: {r: 0.3, g: 1, b: 0.6, a: 0.5}
-  limitFrozenRootMovement: 1
-  maxRootMovePerSnapshot: 2
-  turnDuration: 2
-  commitKey: 32
-  replayKey: 114
-  resetKey: 113
-  enableHealthSnapshots: 1
-  replayOnCapture: 0
-  spawnOffset: {x: 0, y: -18}
-  poseKp: 40
-  poseKd: 8
-  poseMaxSpeed: 800
-  ignoreJointLimits: 1
-  enablePhysicsPoseAssist: 1
-  poseAssistSpring: 35
-  poseAssistDamping: 8
-  maxPoseAssistForce: 500
-  poseAssistAngularSpring: 8
-  poseAssistAngularDamping: 1.2
-  maxPoseAssistTorque: 350
-  enableAdaptiveLegAssist: 1
-  groundMask:
-    serializedVersion: 2
-    m_Bits: 8
-  minStepDistance: 0.35
-  groundProbeHeight: 3
-  groundProbeDistance: 6
-  footGroundOffset: 0.15
-  legStepSpring: 55
-  legPlantForce: 45
-  legLiftForce: 70
-  maxLegAssistForce: 400
-  enablePlantedFootStability: 1
-  plantedFootGroundTolerance: 0.35
-  plantedFootSpring: 120
-  plantedFootDamping: 18
-  maxPlantedFootForce: 900
-  enablePosePreviewLoop: 1
-  disableDamageDuringPreview: 1
-  previewLoopDuration: 0
-  enableAutoWalkFromHipTarget: 1
-  walkMinHipTravel: 0.35
-  walkMaxHipGroundDistance: 3.5
-  walkStepLead: 0.85
-  walkFootSpacing: 0.45
-  walkStepLift: 0.8
-  walkFootSpring: 95
-  walkFootDamping: 12
-  maxWalkFootForce: 750
-  showMovePlanningUI: 1
-  tintFrozenLimbsByIntent: 1
-  defaultLegsToAuto: 1
-  moveUIPanelOffset: {x: 12, y: 12}
-  moveUIPanelWidth: 400
-  strikeRecoverySnapshots: 2
-  strikeVelocityMultiplier: 2
-  strikeDamageMultiplier: 1.5
-  strikeImpactImpulse: 8
-  blockIncomingDamageMultiplier: 0.75
-  currentPhase: 0
-  turnCount: 0
-  playerObj: {fileID: 0}
-  frozenCopy: {fileID: 0}
-  trackedBodies: []
 --- !u!114 &1633812805
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1266,11 +1210,11 @@ MonoBehaviour:
   frequency: 5
   clickRadius: 1.5
   rootFallbackSelectionRadius: 1.75
-  limitDraggedLimbMotion: 1
+  limitDraggedLimbMotion: 0
   maxLimbAdjustment: 1.4
   jointReachPadding: 0.25
   anchorRootWhileDragging: 1
-  anchorParentWhileDragging: 1
+  anchorParentWhileDragging: 0
   anchorPlantedFeetWhileDragging: 1
   rootAnchorForce: 2500
   parentAnchorForce: 1800
@@ -1279,7 +1223,207 @@ MonoBehaviour:
   anchorDampingRatio: 1
   anchorFrequency: 8
   freezeReplay: {fileID: 0}
-  freezeReplayV2: {fileID: 1633812804}
+  freezeReplayV2: {fileID: 0}
+--- !u!114 &1633812806
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1633812800}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7f6f9221f7b94c61a3f67d55710e5c2b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FighterRuntimeRigBuilder
+  buildOnAwake: 0
+  rebuildExistingGeneratedRig: 1
+  hideAuthorMarkersOnBuild: 1
+  generatedRootName: _GeneratedRig
+  addCombatComponents: 1
+  addHealthComponent: 1
+  addLimbMoveIntents: 1
+  ignoreSelfCollisions: 1
+  bodyColor: {r: 1, g: 1, b: 1, a: 1}
+  headColor: {r: 1, g: 1, b: 1, a: 1}
+  limbThickness: 0.5
+  coreThickness: 0.5
+  jointRadius: 0.5
+  headRadius: 0.36
+  handRadius: 0.5
+  footRadius: 1
+  footLength: 0.45
+  footThickness: 0.5
+  bodySortingOrder: 5
+  jointSortingOrder: 8
+  gravityScale: 1
+  linearDamping: 0.5
+  angularDamping: 5
+  defaultMotorTorque: 250
+  coreMass: 4
+  spineMass: 3
+  headMass: 0.8
+  upperLimbMass: 0.8
+  lowerLimbMass: 0.55
+  handFootMass: 0.35
+  bodyFriction: 0.45
+  footFriction: 1.2
+  physicsBounciness: 0
+--- !u!114 &1633812807
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1633812800}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 810e2d8b4488b9d44bbd7851709a5bb8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FreezeReplayV2
+  playerPrefab: {fileID: 3925811490408253655, guid: fd2e4dd0602c4b440beb06d8b263a521, type: 3}
+  frozenCopyColor: {r: 0.3, g: 1, b: 0.6, a: 0.5}
+  limitFrozenRootMovement: 0
+  maxRootMovePerSnapshot: 2
+  turnDuration: 0.5
+  commitKey: 32
+  replayKey: 114
+  resetKey: 113
+  enableHealthSnapshots: 1
+  replayOnCapture: 0
+  syncReplayToFixedStep: 1
+  skipDuplicateReplayFrames: 1
+  duplicateReplayPositionTolerance: 0.0005
+  duplicateReplayRotationTolerance: 0.05
+  spawnOffset: {x: 0, y: -18}
+  snapRuntimeRigFeetToGround: 1
+  spawnGroundProbeHeight: 12
+  spawnGroundProbeDistance: 40
+  spawnGroundClearance: 0.03
+  poseKp: 55
+  poseKd: 14
+  poseMaxSpeed: 600
+  ignoreJointLimits: 1
+  enablePhysicsPoseAssist: 1
+  poseAssistOnlyRootAndUnjointedBodies: 1
+  poseAssistSpring: 40
+  poseAssistDamping: 10
+  maxPoseAssistForce: 500
+  poseAssistAngularSpring: 10
+  poseAssistAngularDamping: 2
+  maxPoseAssistTorque: 350
+  enableAdaptiveLegAssist: 1
+  groundMask:
+    serializedVersion: 2
+    m_Bits: 8
+  minStepDistance: 0.35
+  groundProbeHeight: 3
+  groundProbeDistance: 6
+  footGroundOffset: 0.15
+  fallbackGroundProbeToAllLayers: 1
+  preventFrozenCopyGroundPenetration: 1
+  frozenCopyGroundClearance: 0.01
+  legStepSpring: 0
+  legPlantForce: 0
+  legLiftForce: 0
+  maxLegAssistForce: 0
+  useForceLegAssistWhenNotWalking: 0
+  enablePlantedFootStability: 1
+  usePlantedFootJoints: 1
+  usePlantedFootSpringFallback: 0
+  plantedFootGroundTolerance: 0.35
+  plantedFootSpring: 0
+  plantedFootDamping: 0
+  maxPlantedFootForce: 0
+  plantedFootDeadzone: 0.04
+  plantedFootVelocityDeadzone: 0.08
+  plantedFootJointFrequency: 8
+  plantedFootJointDampingRatio: 1
+  plantedFootJointBreakForce: 3500
+  plantedFootJointBreakTorque: 1800
+  enablePosePreviewLoop: 1
+  disableDamageDuringPreview: 1
+  previewLoopDuration: 3
+  enableAutoWalkFromHipTarget: 1
+  walkMinHipTravel: 0.35
+  walkMaxHipGroundDistance: 3.5
+  walkStepLead: 0.85
+  walkFootSpacing: 0.45
+  walkStepLift: 0.8
+  walkFootSpring: 0
+  walkFootDamping: 0
+  maxWalkFootForce: 0
+  minAutoFootSeparation: 0.85
+  autoKneeOutwardOffset: 0.55
+  autoCrouchKneeLift: 0.35
+  rotateFrozenAutoLegsToGeneratedTargets: 1
+  driveAutoLegsToGeneratedTargets: 1
+  useJointMotorsForAutoWalk: 1
+  reduceAutoWalkLimbForcesWhenUsingMotors: 1
+  skipAutoLegTargetForPlantedFeet: 1
+  driveAutoLegTargetsOnlyDuringWalk: 1
+  usePoseDriversForAutoLegs: 1
+  autoLegTargetSpring: 0
+  autoLegTargetDamping: 0
+  maxAutoLegTargetForce: 0
+  rotateAutoLegsTowardGeneratedTargets: 0
+  autoLegTargetAngularSpring: 0
+  autoLegTargetAngularDamping: 0
+  maxAutoLegTargetTorque: 0
+  showMovePlanningUI: 1
+  tintFrozenLimbsByIntent: 1
+  defaultLegsToAuto: 1
+  moveUIPanelOffset: {x: 12, y: 12}
+  moveUIPanelWidth: 460
+  moveUIStartMinimized: 1
+  moveUIMinimizedWidth: 230
+  moveUIMinimizedHeight: 42
+  strikeRecoverySnapshots: 2
+  strikeVelocityMultiplier: 2
+  strikeDamageMultiplier: 1.5
+  strikeImpactImpulse: 8
+  blockIncomingDamageMultiplier: 0.75
+  validateRigOnStart: 1
+  logRigValidationDetails: 1
+  disableLegacyMotorControllers: 1
+  currentPhase: 0
+  turnCount: 1
+  playerObj: {fileID: 0}
+  frozenCopy: {fileID: 0}
+  trackedBodies:
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  autoLoadPresetName: 
+--- !u!114 &1633812808
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1633812800}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2938020949346564c9562004e57c1373, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FRV2Diagnostics
+  reportKey: 289
+  generatePresetKey: 290
+  autoReportInterval: 5
+  logSuggestionsToConsole: 1
+  autoGeneratePresetWithReport: 1
 --- !u!1 &1648816695 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 3187210086922116515, guid: 0d6cd692ee38dac40914f5f743dad485, type: 3}
@@ -1375,7 +1519,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 2284447971625441649, guid: f2c3519dcd1a96a418c2cdfcec23040c, type: 3}
       propertyPath: orthographic size
-      value: 20.03
+      value: 15.1
       objectReference: {fileID: 0}
     - target: {fileID: 4890524425609136935, guid: f2c3519dcd1a96a418c2cdfcec23040c, type: 3}
       propertyPath: m_Name
@@ -1383,11 +1527,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8998557635205397693, guid: f2c3519dcd1a96a418c2cdfcec23040c, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 14.7
+      value: 19.94
       objectReference: {fileID: 0}
     - target: {fileID: 8998557635205397693, guid: f2c3519dcd1a96a418c2cdfcec23040c, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -21
+      value: -21.98
       objectReference: {fileID: 0}
     - target: {fileID: 8998557635205397693, guid: f2c3519dcd1a96a418c2cdfcec23040c, type: 3}
       propertyPath: m_LocalPosition.z

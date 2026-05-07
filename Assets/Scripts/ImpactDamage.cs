@@ -57,6 +57,9 @@ public class ImpactDamage : MonoBehaviour
     private bool isHead = false;
     private float flashTimer = 0f;
     private bool isFlashing = false;
+    private bool suppressDamageEffects = false;
+    private bool savedPreviewCooldown = false;
+    private float savedPreviewLastDamageTime;
 
     void Start()
     {
@@ -150,7 +153,7 @@ public class ImpactDamage : MonoBehaviour
 
         // Don't damage yourself — check if same fighter
         if (otherLimb.fighterHealth == this.fighterHealth) return;
-        if (fighterHealth == null) return;
+        if (fighterHealth == null && !suppressDamageEffects) return;
 
         LimbMoveIntent attackerIntent = otherLimb.GetComponent<LimbMoveIntent>();
         LimbMoveIntent defenderIntent = GetComponent<LimbMoveIntent>();
@@ -167,11 +170,15 @@ public class ImpactDamage : MonoBehaviour
         if (defenderIntent != null)
             finalDamage *= defenderIntent.IncomingDamageMultiplier;
 
-        // Apply damage to this fighter's health
-        fighterHealth.TakeDamage(finalDamage);
         lastDamageTime = Time.time;
 
         ApplyStrikeImpulse(collision, attackerIntent);
+
+        if (suppressDamageEffects)
+            return;
+
+        // Apply damage to this fighter's health
+        fighterHealth.TakeDamage(finalDamage);
 
         // Visual feedback
         if (showHitFlash)
@@ -237,6 +244,28 @@ public class ImpactDamage : MonoBehaviour
             spriteRenderer.color = originalColor;
         else if (ssRenderer != null)
             ssRenderer.color = originalColor;
+    }
+
+    public void SetPreviewSimulationMode(bool enabled)
+    {
+        if (enabled)
+        {
+            if (!suppressDamageEffects)
+            {
+                savedPreviewLastDamageTime = lastDamageTime;
+                savedPreviewCooldown = true;
+            }
+
+            suppressDamageEffects = true;
+            return;
+        }
+
+        suppressDamageEffects = false;
+        if (savedPreviewCooldown)
+        {
+            lastDamageTime = savedPreviewLastDamageTime;
+            savedPreviewCooldown = false;
+        }
     }
 
     /// <summary>

@@ -79,6 +79,7 @@ public class SmartPoser : MonoBehaviour
     private float dragStartJointReach;
     private Vector2 currentDragTarget;
     private bool directRootDrag;
+    private bool v2PhysicsPoseEditActive;
     private Vector2 directRootMouseOffset;
     private readonly List<TargetJoint2D> poseAnchorJoints = new List<TargetJoint2D>();
     private SpriteRenderer hoveredRenderer;
@@ -217,6 +218,13 @@ public class SmartPoser : MonoBehaviour
         currentDragTarget = mouseWorld;
         dragStartJointReach = GetCurrentJointReach(rb, mouseWorld);
         ClearHoverHighlight();
+
+        if (freezeReplayV2 != null)
+        {
+            freezeReplayV2.BeginFrozenPhysicsPoseEdit();
+            v2PhysicsPoseEditActive = true;
+        }
+
         CreatePoseAnchors(frozenObj, rb);
 
         activeTargetJoint = rb.gameObject.AddComponent<TargetJoint2D>();
@@ -274,12 +282,18 @@ public class SmartPoser : MonoBehaviour
         if (directRootDrag && freezeReplayV2 != null)
             freezeReplayV2.EndFrozenRootPoseEdit();
         ClearPoseAnchors();
-        StabilizeFrozenPose();
+
+        if (v2PhysicsPoseEditActive && freezeReplayV2 != null)
+            freezeReplayV2.EndFrozenPhysicsPoseEdit();
+        else
+            StabilizeFrozenPose();
+
         if (freezeReplayV2 != null)
             freezeReplayV2.RequestPosePreviewRestart();
         draggedBody = null;
         draggedJoint = null;
         directRootDrag = false;
+        v2PhysicsPoseEditActive = false;
     }
 
     /// <summary>
@@ -585,22 +599,82 @@ public class SmartPoser : MonoBehaviour
     {
         ClearPoseAnchors();
 
-        Rigidbody2D root = FindRootBody(frozenObj);
-        int plantedAnchorCount = anchorPlantedFeetWhileDragging
-            ? AddPlantedFootAnchors(frozenObj, rb)
-            : 0;
+        // Build the kinematic chain for the dragged body.
+        // Walk UP the HingeJoint2D chain to find all bodies in this limb.
+        HashSet<Rigidbody2D> limbChain = new HashSet<Rigidbody2D>();
+        BuildLimbChain(rb, limbChain);
 
-        bool needsFallbackAnchor = plantedAnchorCount == 0;
-        if (needsFallbackAnchor && anchorRootWhileDragging && root != null && root != rb)
-            AddPoseAnchor(root, root.position, rootAnchorForce);
-
-        if (needsFallbackAnchor && anchorParentWhileDragging)
+        // Anchor everything NOT in this limb chain so only the
+        // dragged limb moves (hand → arm chain, foot → leg chain).
+        Rigidbody2D[] allBodies = frozenObj.GetComponentsInChildren<Rigidbody2D>(true);
+        foreach (var body in allBodies)
         {
-            HingeJoint2D joint = rb.GetComponent<HingeJoint2D>();
-            Rigidbody2D parent = joint != null ? joint.connectedBody : null;
-            if (parent != null && parent != rb && parent != root)
-                AddPoseAnchor(parent, parent.position, parentAnchorForce);
+            if (body == null || limbChain.Contains(body)) continue;
+            AddPoseAnchor(body, body.position, plantedFootAnchorForce);
         }
+    }
+
+    /// <summary>
+    /// Builds the set of Rigidbody2Ds in the same limb chain as the given body.
+    /// Walks UP the HingeJoint2D.connectedBody chain, and also walks DOWN to
+    /// find any children jointed to bodies in the chain.
+    /// Chain stops at the root body (no HingeJoint2D) or at branching joints
+    /// (body has multiple children from different limbs).
+    /// </summary>
+    void BuildLimbChain(Rigidbody2D startBody, HashSet<Rigidbody2D> chain)
+    {
+        if (startBody == null) return;
+        chain.Add(startBody);
+
+        // Walk DOWN: find children whose HingeJoint2D connects to startBody
+        GameObject frozenObj = GetFrozenCopy();
+        if (frozenObj != null)
+        {
+            foreach (var body in frozenObj.GetComponentsInChildren<Rigidbody2D>(true))
+            {
+                if (body == null || chain.Contains(body)) continue;
+                HingeJoint2D childJoint = body.GetComponent<HingeJoint2D>();
+                if (childJoint != null && chain.Contains(childJoint.connectedBody))
+                    chain.Add(body);
+            }
+        }
+
+        // Walk UP: follow HingeJoint2D.connectedBody up to (but NOT including)
+        // the root body. Stop before any body that has joints from multiple
+        // different limb sides (a branch point like the hips or torso).
+        Rigidbody2D current = startBody;
+        while (current != null)
+        {
+            HingeJoint2D joint = current.GetComponent<HingeJoint2D>();
+            if (joint == null || joint.connectedBody == null) break;
+
+            Rigidbody2D parent = joint.connectedBody;
+
+            // Stop at the root — don't include it in the chain
+            if (IsRootBody(parent.gameObject)) break;
+
+            // Stop at branch points — if the parent has children from
+            // multiple limbs, it's a torso/spine and shouldn't move
+            int childCount = CountJointedChildren(parent, frozenObj);
+            if (childCount > 1) break;
+
+            chain.Add(parent);
+            current = parent;
+        }
+    }
+
+    int CountJointedChildren(Rigidbody2D parent, GameObject frozenObj)
+    {
+        if (frozenObj == null) return 0;
+        int count = 0;
+        foreach (var body in frozenObj.GetComponentsInChildren<Rigidbody2D>(true))
+        {
+            if (body == null || body == parent) continue;
+            HingeJoint2D joint = body.GetComponent<HingeJoint2D>();
+            if (joint != null && joint.connectedBody == parent)
+                count++;
+        }
+        return count;
     }
 
     int AddPlantedFootAnchors(GameObject frozenObj, Rigidbody2D draggedRb)
@@ -748,5 +822,7 @@ public class SmartPoser : MonoBehaviour
         if (activeTargetJoint != null)
             Destroy(activeTargetJoint);
         ClearPoseAnchors();
+        if (v2PhysicsPoseEditActive && freezeReplayV2 != null)
+            freezeReplayV2.EndFrozenPhysicsPoseEdit();
     }
 }
