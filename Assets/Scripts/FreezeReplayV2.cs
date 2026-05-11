@@ -2874,16 +2874,16 @@ public class FreezeReplayV2 : MonoBehaviour
         {
             bool autoSelected = intent != null && intent.mode == LimbMoveIntent.MoveMode.Auto;
             if (GUILayout.Toggle(autoSelected, "Auto", "Button", GUILayout.Width(58f)) && intent != null)
-                intent.QueueAuto();
+                QueueIntentForEntireLimb(plan, LimbMoveIntent.MoveMode.Auto);
         }
 
         bool basicSelected = intent == null || intent.mode == LimbMoveIntent.MoveMode.BasicBlock;
         if (GUILayout.Toggle(basicSelected, "Basic/Block", "Button", GUILayout.Width(96f)) && intent != null)
-            intent.QueueBasicBlock();
+            QueueIntentForEntireLimb(plan, LimbMoveIntent.MoveMode.BasicBlock);
 
         bool strikeSelected = intent != null && intent.mode == LimbMoveIntent.MoveMode.Strike;
         if (GUILayout.Toggle(strikeSelected, "Strike", "Button", GUILayout.Width(64f)) && intent != null)
-            intent.QueueStrike();
+            QueueIntentForEntireLimb(plan, LimbMoveIntent.MoveMode.Strike);
 
         GUI.enabled = wasEnabled;
         GUILayout.Label(intent != null ? intent.GetDisplayName() : "Basic/Block", GUILayout.Width(88f));
@@ -2935,6 +2935,44 @@ public class FreezeReplayV2 : MonoBehaviour
         GUI.color = GetIntentColor(plan.intent);
         GUI.DrawTexture(new Rect(Mathf.Lerp(rect.xMin, rect.xMax, targetT) - 2f, rect.y - 2f, 4f, rect.height + 4f), Texture2D.whiteTexture);
         GUI.color = oldColor;
+    }
+
+    private void QueueIntentForEntireLimb(LimbPlan sourcePlan, LimbMoveIntent.MoveMode newMode)
+    {
+        if (sourcePlan == null || sourcePlan.liveBody == null) return;
+        bool isLeg = IsLegLimb(sourcePlan.liveBody.name);
+        bool isLeft = IsLeftSide(sourcePlan);
+
+        foreach (var p in limbPlans)
+        {
+            if (p == null || p.liveBody == null || p.intent == null) continue;
+
+            if (isLeg && IsLegLimb(p.liveBody.name) && IsLeftSide(p) == isLeft)
+            {
+                ApplyModeToPlan(p, newMode);
+            }
+            else if (!isLeg && !IsLegLimb(p.liveBody.name) && IsLeftSide(p) == isLeft)
+            {
+                ApplyModeToPlan(p, newMode);
+            }
+        }
+    }
+
+    private void ApplyModeToPlan(LimbPlan plan, LimbMoveIntent.MoveMode mode)
+    {
+        switch (mode)
+        {
+            case LimbMoveIntent.MoveMode.Auto:
+                if (IsLegLimb(plan.liveBody.name)) plan.intent.QueueAuto();
+                else plan.intent.QueueBasicBlock(); // arms don't have Auto
+                break;
+            case LimbMoveIntent.MoveMode.BasicBlock:
+                plan.intent.QueueBasicBlock();
+                break;
+            case LimbMoveIntent.MoveMode.Strike:
+                plan.intent.QueueStrike();
+                break;
+        }
     }
 
     public void StabilizeFrozenCopyPose()
@@ -3165,16 +3203,31 @@ public class FreezeReplayV2 : MonoBehaviour
         }
     }
 
-    public void BeginFrozenPhysicsPoseEdit()
+    public void BeginFrozenPhysicsPoseEdit(GameObject bodyPart = null)
     {
         if (frozenCopy == null) return;
 
         frozenPhysicsPoseEditActive = true;
         SetFrozenCopyBodyType(RigidbodyType2D.Dynamic);
         ZeroFrozenCopyVelocities();
+
+        if (bodyPart != null)
+        {
+            Transform ownedBody = GetFrozenBodyOwner(bodyPart);
+            foreach (var plan in limbPlans)
+            {
+                if (plan == null || plan.frozenBody == null || plan.intent == null) continue;
+                if (ownedBody != plan.frozenBody) continue;
+
+                if (IsLegLimb(plan.liveBody.name) && plan.intent.mode == LimbMoveIntent.MoveMode.Auto)
+                {
+                    QueueIntentForEntireLimb(plan, LimbMoveIntent.MoveMode.BasicBlock);
+                }
+            }
+        }
     }
 
-    public void EndFrozenPhysicsPoseEdit()
+    public void EndFrozenPhysicsPoseEdit(GameObject draggedBody = null)
     {
         if (frozenCopy == null) return;
 
@@ -3182,6 +3235,46 @@ public class FreezeReplayV2 : MonoBehaviour
         frozenPhysicsPoseEditActive = false;
         SetFrozenCopyBodyType(RigidbodyType2D.Kinematic);
         ZeroFrozenCopyVelocities();
+
+        if (draggedBody != null)
+        {
+            Transform ownedBody = GetFrozenBodyOwner(draggedBody);
+            foreach (var plan in limbPlans)
+            {
+                if (plan == null || plan.frozenBody == null || plan.intent == null) continue;
+                if (ownedBody != plan.frozenBody) continue;
+
+                if (IsLegLimb(plan.liveBody.name))
+                {
+                    LimbPlan footPlan = IsFootLimb(plan.liveBody.name) ? plan : FindFootPlanForSide(plan);
+                    if (footPlan != null)
+                    {
+                        Collider2D col = footPlan.frozenBody.GetComponent<Collider2D>();
+                        if (col != null)
+                        {
+                            Bounds bounds = col.bounds;
+                            Vector2 probe = new Vector2(bounds.center.x, bounds.min.y);
+                            if (TryGetGroundPoint(probe, out Vector2 groundPoint))
+                            {
+                                float dist = bounds.min.y - groundPoint.y;
+                                if (dist <= plantedFootGroundTolerance)
+                                {
+                                    plan.intent.QueueAuto();
+                                    footPlan.intent.QueueAuto();
+                                    
+                                    // Also queue auto for the rest of the leg
+                                    foreach (var p in limbPlans) {
+                                        if (p != null && p.intent != null && IsLegLimb(p.liveBody.name) && IsSameLegSide(p, plan)) {
+                                            p.intent.QueueAuto();
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     // ===== FREEZE/UNFREEZE =====
@@ -3250,7 +3343,8 @@ public class FreezeReplayV2 : MonoBehaviour
             if (plan == null || plan.frozenBody == null || plan.intent == null) continue;
             if (ownedBody != plan.frozenBody) continue;
 
-            return !(IsLegLimb(plan.liveBody.name) && plan.intent.mode == LimbMoveIntent.MoveMode.Auto);
+            // Legs are now editable even in Auto mode
+            return true;
         }
 
         return true;

@@ -221,7 +221,7 @@ public class SmartPoser : MonoBehaviour
 
         if (freezeReplayV2 != null)
         {
-            freezeReplayV2.BeginFrozenPhysicsPoseEdit();
+            freezeReplayV2.BeginFrozenPhysicsPoseEdit(rb.gameObject);
             v2PhysicsPoseEditActive = true;
         }
 
@@ -284,7 +284,7 @@ public class SmartPoser : MonoBehaviour
         ClearPoseAnchors();
 
         if (v2PhysicsPoseEditActive && freezeReplayV2 != null)
-            freezeReplayV2.EndFrozenPhysicsPoseEdit();
+            freezeReplayV2.EndFrozenPhysicsPoseEdit(draggedBody != null ? draggedBody.gameObject : null);
         else
             StabilizeFrozenPose();
 
@@ -823,6 +823,6 @@ public class SmartPoser : MonoBehaviour
             Destroy(activeTargetJoint);
         ClearPoseAnchors();
         if (v2PhysicsPoseEditActive && freezeReplayV2 != null)
-            freezeReplayV2.EndFrozenPhysicsPoseEdit();
+            freezeReplayV2.EndFrozenPhysicsPoseEdit(draggedBody != null ? draggedBody.gameObject : null);
     }
 }
