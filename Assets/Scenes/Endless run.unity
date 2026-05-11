@@ -1249,7 +1249,7 @@ MonoBehaviour:
   limbThickness: 0.5
   coreThickness: 0.5
   jointRadius: 0.5
-  headRadius: 0.36
+  headRadius: 1
   handRadius: 0.5
   footRadius: 1
   footLength: 0.45
@@ -1285,7 +1285,7 @@ MonoBehaviour:
   frozenCopyColor: {r: 0.3, g: 1, b: 0.6, a: 0.5}
   limitFrozenRootMovement: 0
   maxRootMovePerSnapshot: 2
-  turnDuration: 0.5
+  turnDuration: 1
   commitKey: 32
   replayKey: 114
   resetKey: 113
@@ -1300,18 +1300,23 @@ MonoBehaviour:
   spawnGroundProbeHeight: 12
   spawnGroundProbeDistance: 40
   spawnGroundClearance: 0.03
-  poseKp: 55
-  poseKd: 14
-  poseMaxSpeed: 600
+  poseKp: 180
+  poseKd: 35
+  poseMaxSpeed: 800
   ignoreJointLimits: 1
-  enablePhysicsPoseAssist: 1
-  poseAssistOnlyRootAndUnjointedBodies: 1
-  poseAssistSpring: 40
-  poseAssistDamping: 10
-  maxPoseAssistForce: 500
-  poseAssistAngularSpring: 10
-  poseAssistAngularDamping: 2
-  maxPoseAssistTorque: 350
+  enablePhysicsPoseAssist: 0
+  poseAssistOnlyRootAndUnjointedBodies: 0
+  enablePoseTethers: 1
+  poseTetherMaxDistance: 0.05
+  tetherShrinksOverTurn: 1
+  startingTetherDistance: 1
+  tetherBreakForce: 5000
+  poseAssistSpring: 85
+  poseAssistDamping: 25
+  maxPoseAssistForce: 1200
+  poseAssistAngularSpring: 150
+  poseAssistAngularDamping: 30
+  maxPoseAssistTorque: 1800
   enableAdaptiveLegAssist: 1
   groundMask:
     serializedVersion: 2
@@ -1331,8 +1336,8 @@ MonoBehaviour:
   enablePlantedFootStability: 1
   usePlantedFootJoints: 1
   usePlantedFootSpringFallback: 0
-  plantedFootGroundTolerance: 0.35
-  plantedFootSpring: 0
+  plantedFootGroundTolerance: 1.2
+  plantedFootSpring: 120
   plantedFootDamping: 0
   maxPlantedFootForce: 0
   plantedFootDeadzone: 0.04
@@ -1341,14 +1346,21 @@ MonoBehaviour:
   plantedFootJointDampingRatio: 1
   plantedFootJointBreakForce: 3500
   plantedFootJointBreakTorque: 1800
+  plantedFootDetachThreshold: 0.4
+  enableFootReplanting: 1
+  replantFootFrequency: 3
+  replantFootDamping: 0.9
+  replantFootMaxForce: 800
+  replantFootArrivalDistance: 0.15
   enablePosePreviewLoop: 1
   disableDamageDuringPreview: 1
-  previewLoopDuration: 3
+  previewLoopDuration: 1
   enableAutoWalkFromHipTarget: 1
   walkMinHipTravel: 0.35
-  walkMaxHipGroundDistance: 3.5
+  walkMaxHipGroundDistance: 6.357
+  walkMaxStrideDistance: 6
   walkStepLead: 0.85
-  walkFootSpacing: 0.45
+  walkFootSpacing: 3
   walkStepLift: 0.8
   walkFootSpring: 0
   walkFootDamping: 0
@@ -1387,7 +1399,7 @@ MonoBehaviour:
   logRigValidationDetails: 1
   disableLegacyMotorControllers: 1
   currentPhase: 0
-  turnCount: 1
+  turnCount: 35
   playerObj: {fileID: 0}
   frozenCopy: {fileID: 0}
   trackedBodies:
@@ -1422,8 +1434,8 @@ MonoBehaviour:
   reportKey: 289
   generatePresetKey: 290
   autoReportInterval: 5
-  logSuggestionsToConsole: 1
-  autoGeneratePresetWithReport: 1
+  logSuggestionsToConsole: 0
+  autoGeneratePresetWithReport: 0
 --- !u!1 &1648816695 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 3187210086922116515, guid: 0d6cd692ee38dac40914f5f743dad485, type: 3}

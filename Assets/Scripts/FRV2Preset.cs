@@ -17,10 +17,20 @@ public class FRV2Preset
     public float poseKd = 8f;
     public float poseMaxSpeed = 800f;
     public bool ignoreJointLimits = false;
+    public bool limitFrozenRootMovement = true;
+    public float maxRootMovePerSnapshot = 2f;
 
     // --- Physics Pose Assist ---
     public bool enablePhysicsPoseAssist = true;
     public bool poseAssistOnlyRootAndUnjointedBodies = true;
+    
+    // --- Pose Tethers ---
+    public bool enablePoseTethers = false;
+    public float poseTetherMaxDistance = 0.05f;
+    public bool tetherShrinksOverTurn = true;
+    public float startingTetherDistance = 1.0f;
+    public float tetherBreakForce = 4000f;
+
     public float poseAssistSpring = 35f;
     public float poseAssistDamping = 8f;
     public float maxPoseAssistForce = 500f;
@@ -42,6 +52,12 @@ public class FRV2Preset
     public float plantedFootJointDampingRatio = 1f;
     public float plantedFootJointBreakForce = 2500f;
     public float plantedFootJointBreakTorque = 1200f;
+    public float plantedFootDetachThreshold = 0.4f;
+    public bool enableFootReplanting = true;
+    public float replantFootFrequency = 3f;
+    public float replantFootDamping = 0.9f;
+    public float replantFootMaxForce = 800f;
+    public float replantFootArrivalDistance = 0.15f;
 
     // --- Auto Walk ---
     public bool enableAutoWalkFromHipTarget = true;
@@ -49,6 +65,7 @@ public class FRV2Preset
     public bool reduceAutoWalkLimbForcesWhenUsingMotors = true;
     public float walkMinHipTravel = 0.35f;
     public float walkMaxHipGroundDistance = 3.5f;
+    public float walkMaxStrideDistance = 3.5f;
     public float walkStepLead = 0.85f;
     public float walkFootSpacing = 0.45f;
     public float walkStepLift = 0.8f;
@@ -103,6 +120,8 @@ public class FRV2Preset
             poseKd = frv2.poseKd,
             poseMaxSpeed = frv2.poseMaxSpeed,
             ignoreJointLimits = frv2.ignoreJointLimits,
+            limitFrozenRootMovement = frv2.limitFrozenRootMovement,
+            maxRootMovePerSnapshot = frv2.maxRootMovePerSnapshot,
             enablePhysicsPoseAssist = frv2.enablePhysicsPoseAssist,
             poseAssistOnlyRootAndUnjointedBodies = frv2.poseAssistOnlyRootAndUnjointedBodies,
             poseAssistSpring = frv2.poseAssistSpring,
@@ -124,11 +143,18 @@ public class FRV2Preset
             plantedFootJointDampingRatio = frv2.plantedFootJointDampingRatio,
             plantedFootJointBreakForce = frv2.plantedFootJointBreakForce,
             plantedFootJointBreakTorque = frv2.plantedFootJointBreakTorque,
+            plantedFootDetachThreshold = frv2.plantedFootDetachThreshold,
+            enableFootReplanting = frv2.enableFootReplanting,
+            replantFootFrequency = frv2.replantFootFrequency,
+            replantFootDamping = frv2.replantFootDamping,
+            replantFootMaxForce = frv2.replantFootMaxForce,
+            replantFootArrivalDistance = frv2.replantFootArrivalDistance,
             enableAutoWalkFromHipTarget = frv2.enableAutoWalkFromHipTarget,
             useJointMotorsForAutoWalk = frv2.useJointMotorsForAutoWalk,
             reduceAutoWalkLimbForcesWhenUsingMotors = frv2.reduceAutoWalkLimbForcesWhenUsingMotors,
             walkMinHipTravel = frv2.walkMinHipTravel,
             walkMaxHipGroundDistance = frv2.walkMaxHipGroundDistance,
+            walkMaxStrideDistance = frv2.walkMaxStrideDistance,
             walkStepLead = frv2.walkStepLead,
             walkFootSpacing = frv2.walkFootSpacing,
             walkStepLift = frv2.walkStepLift,
@@ -173,8 +199,14 @@ public class FRV2Preset
         frv2.poseKd = poseKd;
         frv2.poseMaxSpeed = poseMaxSpeed;
         frv2.ignoreJointLimits = ignoreJointLimits;
-        frv2.enablePhysicsPoseAssist = enablePhysicsPoseAssist;
-        frv2.poseAssistOnlyRootAndUnjointedBodies = poseAssistOnlyRootAndUnjointedBodies;
+        frv2.limitFrozenRootMovement = limitFrozenRootMovement;
+        frv2.maxRootMovePerSnapshot = maxRootMovePerSnapshot;
+        frv2.enablePoseTethers = enablePoseTethers;
+        frv2.poseTetherMaxDistance = poseTetherMaxDistance;
+        frv2.tetherShrinksOverTurn = tetherShrinksOverTurn;
+        frv2.startingTetherDistance = startingTetherDistance;
+        frv2.tetherBreakForce = tetherBreakForce;
+
         frv2.poseAssistSpring = poseAssistSpring;
         frv2.poseAssistDamping = poseAssistDamping;
         frv2.maxPoseAssistForce = maxPoseAssistForce;
@@ -194,11 +226,18 @@ public class FRV2Preset
         frv2.plantedFootJointDampingRatio = plantedFootJointDampingRatio;
         frv2.plantedFootJointBreakForce = plantedFootJointBreakForce;
         frv2.plantedFootJointBreakTorque = plantedFootJointBreakTorque;
+        frv2.plantedFootDetachThreshold = plantedFootDetachThreshold;
+        frv2.enableFootReplanting = enableFootReplanting;
+        frv2.replantFootFrequency = replantFootFrequency;
+        frv2.replantFootDamping = replantFootDamping;
+        frv2.replantFootMaxForce = replantFootMaxForce;
+        frv2.replantFootArrivalDistance = replantFootArrivalDistance;
         frv2.enableAutoWalkFromHipTarget = enableAutoWalkFromHipTarget;
         frv2.useJointMotorsForAutoWalk = useJointMotorsForAutoWalk;
         frv2.reduceAutoWalkLimbForcesWhenUsingMotors = reduceAutoWalkLimbForcesWhenUsingMotors;
         frv2.walkMinHipTravel = walkMinHipTravel;
         frv2.walkMaxHipGroundDistance = walkMaxHipGroundDistance;
+        frv2.walkMaxStrideDistance = walkMaxStrideDistance;
         frv2.walkStepLead = walkStepLead;
         frv2.walkFootSpacing = walkFootSpacing;
         frv2.walkStepLift = walkStepLift;

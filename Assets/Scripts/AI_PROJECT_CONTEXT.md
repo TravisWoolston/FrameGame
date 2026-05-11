@@ -293,8 +293,10 @@ Auto-walk is experimental and is one of the more fragile current systems.
 ### Knee IK (GetAutoKneeTarget)
 
 Uses 2-bone IK triangle math to compute knee position:
-- **Knees go UP (y-axis)**, not sideways — critical for 2D side-view
-- IK height = `√(halfLeg² - halfDist²)` applied vertically above the hip-foot midpoint
+- IK height = `√(halfLeg² - halfDist²)` applied **perpendicular** to the hip→foot line
+- The perpendicular is chosen so knees always have a positive y-component (bend forward/up, never behind/under)
+- When standing upright: hip-foot line is vertical → perpendicular is horizontal → knees go forward
+- When crouching: hip-foot line is more horizontal → perpendicular is more vertical → knees go up naturally
 - Small lateral offset (`autoKneeOutwardOffset * 0.3f`) for visual leg separation
 - Outward offset decreases during deep crouch (`1 - crouch * 0.5`)
 - Swing leg gets additional lift during walk phase
@@ -321,16 +323,17 @@ If calves rotate around knees while thighs do not move:
 - The selected swing foot releases its planted joint during walking
 - Joints break when force/torque exceed `plantedFootJointBreakForce` / `plantedFootJointBreakTorque`
 
-### Known Issues — Foot Detachment
+### Intent-Based Foot Detachment
 
-**Current limitation**: planted feet only detach via FixedJoint2D break force, which is crude. When the frozen copy's foot has moved to a new location between snapshots (e.g., stepping forward), the planted foot needs to release and re-plant at the new location.
+At the start of each simulation/preview, `PreReleasePlantedFeetByFrozenTarget()` compares each planted foot's anchor position (from `CachePlantedFootTargets`) to the frozen copy's current foot position. If the frozen foot has moved beyond `plantedFootDetachThreshold`, the foot is removed from `plantedFootTargets` before `CreatePlantedFootJoints()` runs — so no FixedJoint2D is created for it, and the foot is free to chase its new target.
 
-**Needed improvement**: A smarter detachment system that considers:
-- Whether the frozen copy's foot target has moved significantly from the planted position
-- The direction and magnitude of the intended foot movement
-- Not just raw force, but intent-based release (if the frozen foot is no longer near the planted position, release)
+- **`plantedFootDetachThreshold`** (default: 0.4): distance threshold for intent-based release. Set to 0 to disable.
+- Called from `BeginLimbPlansForSimulation()` between `CachePlantedFootTargets()` and `CreatePlantedFootJoints()`
+- Works for both preview and committed simulation paths
+- Logged to console when a foot is pre-released
+- Included in the preset system (`FRV2Preset`)
 
-This is an **open design problem** — the solution likely involves comparing the frozen foot position to the planted position at the start of each simulation/preview, and pre-releasing joints for feet whose targets have moved beyond a threshold. This is NOT just a preset tuning issue; it requires new logic.
+Feet can still break free via FixedJoint2D break force/torque during simulation if needed.
 
 ### Spine-to-Hips Weakness
 
@@ -444,7 +447,7 @@ In general, prefer improving the current `FreezeReplayV2` + marker rig path over
 ## Current Known Issues
 
 1. **Spine-to-hips weakness**: The spine joint's motor is too weak in the angle-driven preset, causing the torso to slouch. Needs per-joint tuning or increased motor torque.
-2. **Planted foot detachment**: Feet only release via FixedJoint2D break force. Needs intent-based release logic that considers whether the frozen foot has moved to a new position.
+2. ~~**Planted foot detachment**~~: **Resolved** — intent-based pre-release via `PreReleasePlantedFeetByFrozenTarget()` and `plantedFootDetachThreshold`.
 3. **ImpactDamage cooldown uses Time.time**: Minor preview-vs-commit divergence from wall-clock based cooldowns.
 4. **Auto-walk fragility**: Mixes generated targets, hinge motors, and limited foot forces. Still experimental.
 5. **Kinematic frozen-copy stabilization**: Custom logic that can introduce unexpected whole-body lifts if ground detection is wrong.
