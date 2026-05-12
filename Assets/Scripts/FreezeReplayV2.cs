@@ -130,6 +130,10 @@ public class FreezeReplayV2 : MonoBehaviour
     [Tooltip("Maximum torque applied by the body pose assist.")]
     public float maxPoseAssistTorque = 350f;
 
+    [Header("=== Airborne Physics ===")]
+    [Tooltip("Multiplier for angular spring strength when airborne to provide 'rigid' control while falling.")]
+    public float airborneAngularSpringMultiplier = 10f;
+
     [Header("=== Adaptive Leg Assist ===")]
     public bool enableAdaptiveLegAssist = true;
     public LayerMask groundMask = ~0;
@@ -178,6 +182,16 @@ public class FreezeReplayV2 : MonoBehaviour
 
     [Tooltip("Once the replanting foot arrives within this distance of its target, convert to a planted FixedJoint2D.")]
     public float replantFootArrivalDistance = 0.15f;
+
+    [Header("=== Jumping & Airborne ===")]
+    [Tooltip("Force multiplier applied when legs hit max extension to launch the fighter.")]
+    public float jumpForceMultiplier = 300f;
+    [Tooltip("Fraction of max leg reach needed to trigger jump impulse.")]
+    public float jumpExtensionThreshold = 0.9f;
+    [HideInInspector] public bool forceAirborneMode = false;
+    [HideInInspector] public bool isJumpNextSimulation = false;
+    [HideInInspector] public bool jumpTriggerArmed = false;
+    private bool hasJumpTriggered = false;
 
     [Header("=== Posing Preview Loop ===")]
     public bool enablePosePreviewLoop = true;
@@ -468,11 +482,34 @@ public class FreezeReplayV2 : MonoBehaviour
             || (currentPhase == TurnPhase.Posing && posePreviewLoopRunning);
         if (!shouldDrivePhysics) return;
 
-        ApplyPlantedFootStability();
-        ApplyPhysicsPoseAssist();
-        ApplyPoseTethers();
-        ApplyAdaptiveLegAssist();
-        ApplyAutoLegGeneratedTargetAssist();
+        bool isPurePhysicsMode = forceAirborneMode;
+        
+        // If we are waiting for the jump trigger to fire, we need PoseAssist active to pull hips up and extend legs!
+        if (jumpTriggerArmed && !hasJumpTriggered)
+        {
+            isPurePhysicsMode = false;
+        }
+
+        if (!isPurePhysicsMode)
+        {
+            ApplyPlantedFootStability();
+            ApplyPhysicsPoseAssist();
+            ApplyPoseTethers();
+            ApplyAdaptiveLegAssist();
+            ApplyAutoLegGeneratedTargetAssist();
+        }
+        else
+        {
+            ClearPlantedFootJoints();
+            ClearReplantingFootJoints();
+            ClearPoseTethers();
+        }
+
+        if (isCommittedSimulation && jumpTriggerArmed && !hasJumpTriggered)
+        {
+            CheckJumpTrigger();
+        }
+        
         CheckReplantingFootArrival();
 
         if (!isCommittedSimulation)
@@ -484,7 +521,10 @@ public class FreezeReplayV2 : MonoBehaviour
         RecordFrame();
         simTimeRemaining -= Time.fixedDeltaTime;
         if (simTimeRemaining <= 0f)
+        {
             currentPhase = TurnPhase.Capturing;
+            jumpTriggerArmed = false;
+        }
     }
 
     // ===== TURN PHASES =====
@@ -586,6 +626,15 @@ public class FreezeReplayV2 : MonoBehaviour
         {
             savedHP = fighterHealth.CurrentHP;
             fighterHealth.SaveHP();
+        }
+
+        hasJumpTriggered = false;
+
+        if (isJumpNextSimulation)
+        {
+            isJumpNextSimulation = false;
+            jumpTriggerArmed = true;
+            forceAirborneMode = true;
         }
 
         // Start simulation — unfreeze live bodies
@@ -1662,12 +1711,16 @@ public class FreezeReplayV2 : MonoBehaviour
             float multiplier = GetIntentVelocityMultiplier(i);
             Vector2 positionError = (Vector2)target.position - rb.position;
             Vector2 force = positionError * (poseAssistSpring * multiplier) - rb.linearVelocity * poseAssistDamping;
+            
+            float angularMult = multiplier;
+            if (forceAirborneMode || isJumpNextSimulation) angularMult *= airborneAngularSpringMultiplier;
+
             rb.AddForce(Vector2.ClampMagnitude(force, maxPoseAssistForce * multiplier), ForceMode2D.Force);
 
             float rotationError = Mathf.DeltaAngle(rb.rotation, target.eulerAngles.z);
-            float torque = rotationError * (poseAssistAngularSpring * multiplier)
+            float torque = rotationError * (poseAssistAngularSpring * angularMult)
                 - rb.angularVelocity * poseAssistAngularDamping;
-            rb.AddTorque(Mathf.Clamp(torque, -maxPoseAssistTorque * multiplier, maxPoseAssistTorque * multiplier), ForceMode2D.Force);
+            rb.AddTorque(Mathf.Clamp(torque, -maxPoseAssistTorque * angularMult, maxPoseAssistTorque * angularMult), ForceMode2D.Force);
         }
     }
 
@@ -1675,8 +1728,11 @@ public class FreezeReplayV2 : MonoBehaviour
     {
         if (!enablePoseTethers || frozenChildren == null) return;
 
+        bool isAirborne = forceAirborneMode || isJumpNextSimulation;
         bool isStarting = poseTetherJoints.Count == 0 && GetActiveSimulationDuration() > 0.001f;
         
+        Rigidbody2D rootRb = (rootBodyIndex >= 0 && rootBodyIndex < trackedBodies.Count) ? trackedBodies[rootBodyIndex] : null;
+
         int count = Mathf.Min(trackedBodies.Count, frozenChildren.Length);
         for (int i = 0; i < count; i++)
         {
@@ -1685,6 +1741,37 @@ public class FreezeReplayV2 : MonoBehaviour
             
             if (rb == null || target == null || rb.bodyType != RigidbodyType2D.Dynamic) continue;
             
+            // In airborne mode, the root has NO world-space tether (falls via gravity)
+            if (isAirborne && i == rootBodyIndex)
+            {
+                if (poseTetherJoints.TryGetValue(rb, out DistanceJoint2D existing))
+                {
+                    existing.enabled = false;
+                    Destroy(existing);
+                    poseTetherJoints.Remove(rb);
+                }
+                continue;
+            }
+
+            // NEW FIX: In airborne mode, we only tether the ENDS of the limbs (feet/hands).
+            // Tethers on upper limbs (thighs/upper arms) bind against the root's hip/shoulder joints,
+            // preventing rotation. The HingeJoint2D already handles their position relative to the root.
+            if (isAirborne)
+            {
+                string n = rb.name;
+                bool isEnd = IsFootLimb(n) || IsHandLimb(n);
+                if (!isEnd)
+                {
+                    if (poseTetherJoints.TryGetValue(rb, out DistanceJoint2D existing))
+                    {
+                        existing.enabled = false;
+                        Destroy(existing);
+                        poseTetherJoints.Remove(rb);
+                    }
+                    continue;
+                }
+            }
+
             // Skip planted feet as they have their own rigid joints
             if (plantedFootTargets.ContainsKey(rb)) continue;
 
@@ -1692,22 +1779,45 @@ public class FreezeReplayV2 : MonoBehaviour
             {
                 DistanceJoint2D tether = rb.gameObject.AddComponent<DistanceJoint2D>();
                 tether.autoConfigureConnectedAnchor = false;
-                // Target the fixed world position of the frozen copy
-                tether.connectedAnchor = target.position; 
                 tether.anchor = Vector2.zero;
                 tether.maxDistanceOnly = true;
+                tether.breakForce = tetherBreakForce;
+
+                if (isAirborne && rootRb != null)
+                {
+                    // LOCAL SPACE TETHER: Tether limbs to the root instead of the world
+                    tether.connectedBody = rootRb;
+                    // Position relative to root
+                    Transform frozenRoot = GetFrozenRootTransform();
+                    if (frozenRoot != null)
+                    {
+                        Vector3 localOffset = frozenRoot.InverseTransformPoint(target.position);
+                        tether.connectedAnchor = localOffset;
+                    }
+                    else
+                    {
+                        tether.connectedAnchor = rootRb.transform.InverseTransformPoint(target.position);
+                    }
+                }
+                else
+                {
+                    // WORLD SPACE TETHER
+                    tether.connectedAnchor = target.position; 
+                }
                 
                 float initialDist = Vector2.Distance(rb.position, target.position);
                 tether.distance = tetherShrinksOverTurn ? initialDist : poseTetherMaxDistance;
-                tether.breakForce = tetherBreakForce;
                 
                 poseTetherJoints[rb] = tether;
                 poseTetherStartDistances[tether] = initialDist;
             }
             else if (poseTetherJoints.TryGetValue(rb, out DistanceJoint2D tether) && tether != null)
             {
-                // Update target position in case frozen copy moved (though it usually stays static during simulation)
-                tether.connectedAnchor = target.position;
+                // Update world target if not airborne (airborne local targets stay static relative to root)
+                if (!isAirborne)
+                {
+                    tether.connectedAnchor = target.position;
+                }
 
                 if (tetherShrinksOverTurn && poseTetherStartDistances.TryGetValue(tether, out float initialDist))
                 {
@@ -1741,7 +1851,7 @@ public class FreezeReplayV2 : MonoBehaviour
         float phase = GetActiveSimulationPhase();
         foreach (var plan in limbPlans)
         {
-            if (!IsAutoLegPlan(plan)) continue;
+            if (!IsAutoLimbPlan(plan)) continue;
             if (plan.liveBody.bodyType != RigidbodyType2D.Dynamic) continue;
             if (skipAutoLegTargetForPlantedFeet
                 && !autoWalkActive
@@ -1779,10 +1889,10 @@ public class FreezeReplayV2 : MonoBehaviour
         if (autoWalkActive)
         {
             bool isSwingLeg = IsSameLegSide(plan, autoWalkSwingFoot);
-            return GetAutoLegBodyTarget(plan, autoWalkTargetRoot, Vector2.zero, phase, isSwingLeg, plan.liveBody == autoWalkSwingFoot);
+            return GetAutoLimbBodyTarget(plan, autoWalkTargetRoot, Vector2.zero, phase, isSwingLeg, plan.liveBody == autoWalkSwingFoot);
         }
 
-        if (IsGroundContactLegPlan(plan) && plantedFootTargets.TryGetValue(plan.liveBody, out Vector2 plantedTarget))
+        if ((IsGroundContactLegPlan(plan) || IsGroundContactArmPlan(plan)) && plantedFootTargets.TryGetValue(plan.liveBody, out Vector2 plantedTarget))
         {
             return plantedTarget;
         }
@@ -1868,7 +1978,7 @@ public class FreezeReplayV2 : MonoBehaviour
             if (!isSwingContact && isContact && HasActivePlantedFootJoint(plan.liveBody))
                 continue;
 
-            Vector2 target = GetAutoLegBodyTarget(plan, phaseRootTarget, Vector2.zero, phase, isSwingLeg, isSwingContact);
+            Vector2 target = GetAutoLimbBodyTarget(plan, phaseRootTarget, Vector2.zero, phase, isSwingLeg, isSwingContact);
             Vector2 error = target - plan.liveBody.position;
             float spring = isContact ? walkFootSpring : walkFootSpring * 0.7f;
             Vector2 force = error * spring - plan.liveBody.linearVelocity * walkFootDamping;
@@ -1933,8 +2043,8 @@ public class FreezeReplayV2 : MonoBehaviour
         targetRotation = 0f;
         if (plan == null || plan.liveBody == null) return false;
 
-        Vector2 footTarget = GetAutoFootTargetForPlan(plan, rootTarget, Vector2.zero, isSwingLeg || isSwingContact);
-        Vector2 kneeTarget = GetAutoKneeTarget(plan, rootTarget, footTarget, phase, isSwingLeg);
+        Vector2 footTarget = GetAutoLimbEndTarget(plan, rootTarget, Vector2.zero, isSwingLeg || isSwingContact);
+        Vector2 kneeTarget = GetAutoMidJointTarget(plan, rootTarget, footTarget, phase, isSwingLeg);
         Vector2 direction;
 
         if (IsUpperLeg(plan.liveBody.name))
@@ -1966,7 +2076,7 @@ public class FreezeReplayV2 : MonoBehaviour
     {
         foreach (var plan in limbPlans)
         {
-            if (!IsAutoLegPlan(plan) || plan.liveJoint == null) continue;
+            if (!IsAutoLimbPlan(plan) || plan.liveJoint == null) continue;
 
             JointMotor2D motor = plan.liveJoint.motor;
             if (Mathf.Abs(motor.motorSpeed) <= 0.001f) continue;
@@ -1978,10 +2088,10 @@ public class FreezeReplayV2 : MonoBehaviour
 
     private Vector2 GetAutoWalkFootTarget(LimbPlan plan, bool isSwingFoot)
     {
-        return GetAutoFootTargetForPlan(plan, autoWalkTargetRoot, Vector2.zero, isSwingFoot);
+        return GetAutoLimbEndTarget(plan, autoWalkTargetRoot, Vector2.zero, isSwingFoot);
     }
 
-    private Vector2 GetAutoLegBodyTarget(
+    private Vector2 GetAutoLimbBodyTarget(
         LimbPlan plan,
         Vector2 rootTarget,
         Vector2 rootDelta,
@@ -1989,26 +2099,26 @@ public class FreezeReplayV2 : MonoBehaviour
         bool isSwingLeg,
         bool isSwingContact)
     {
-        Vector2 footTarget = GetAutoFootTargetForPlan(plan, rootTarget, rootDelta, isSwingLeg || isSwingContact);
-        Vector2 kneeTarget = GetAutoKneeTarget(plan, rootTarget, footTarget, phase, isSwingLeg);
+        Vector2 endTarget = GetAutoLimbEndTarget(plan, rootTarget, rootDelta, isSwingLeg || isSwingContact);
+        Vector2 midTarget = GetAutoMidJointTarget(plan, rootTarget, endTarget, phase, isSwingLeg);
 
-        if (IsFootLimb(plan.liveBody.name) || IsGroundContactLegPlan(plan))
-            return footTarget;
+        if (IsFootLimb(plan.liveBody.name) || IsHandLimb(plan.liveBody.name) || IsGroundContactLegPlan(plan) || IsGroundContactArmPlan(plan))
+            return endTarget;
 
-        if (IsLowerLeg(plan.liveBody.name))
-            return Vector2.Lerp(kneeTarget, footTarget, 0.5f);
+        if (IsLowerLeg(plan.liveBody.name) || IsLowerArm(plan.liveBody.name))
+            return Vector2.Lerp(midTarget, endTarget, 0.5f);
 
-        if (IsUpperLeg(plan.liveBody.name))
-            return Vector2.Lerp(rootTarget, kneeTarget, 0.5f);
+        if (IsUpperLeg(plan.liveBody.name) || IsUpperArm(plan.liveBody.name))
+            return Vector2.Lerp(rootTarget, midTarget, 0.5f);
 
         return plan.frozenBody.position;
     }
 
-    private Vector2 GetAutoFootTargetForPlan(LimbPlan plan, Vector2 rootTarget, Vector2 rootDelta, bool isSwingContact)
+    private Vector2 GetAutoLimbEndTarget(LimbPlan plan, Vector2 rootTarget, Vector2 rootDelta, bool isSwingContact)
     {
         LimbPlan contactPlan = FindGroundContactPlanForSide(plan);
         
-        // If this foot is planted and NOT swinging, it MUST stay exactly at its anchor.
+        // If this limb is planted and NOT swinging, it MUST stay exactly at its anchor.
         if (!isSwingContact && contactPlan != null && plantedFootTargets.TryGetValue(contactPlan.liveBody, out Vector2 plantedTarget))
             return plantedTarget;
 
@@ -2016,12 +2126,12 @@ public class FreezeReplayV2 : MonoBehaviour
         if (Mathf.Abs(direction) < 0.001f)
             direction = 1f;
 
-        bool hasTravel = autoWalkActive || Mathf.Abs(rootDelta.x) >= walkMinHipTravel;
+        bool isLeg = IsLegLimb(plan.liveBody.name);
+        bool hasTravel = autoWalkActive && isLeg;
         float targetX = rootTarget.x;
         
-        // Calculate max reachable horizontal distance to ensure foot mathematically stays on the floor
+        // Calculate max reachable horizontal distance to ensure limb mathematically stays on the floor
         float maxReach = walkFootSpacing; 
-        Rigidbody2D groundBody = contactPlan != null ? contactPlan.liveBody : plan.liveBody;
         
         if (TryGetGroundPoint(rootTarget, out Vector2 centerGround))
         {
@@ -2051,9 +2161,10 @@ public class FreezeReplayV2 : MonoBehaviour
         }
         else
         {
-            // Idle standing: keep feet separated anatomically
+            // Idle standing: keep limbs separated anatomically
             float side = GetLegSideSign(plan);
-            float desiredStep = Mathf.Max(walkFootSpacing * 0.5f, minAutoFootSeparation * 0.5f);
+            float spacing = isLeg ? walkFootSpacing : 1.2f;
+            float desiredStep = Mathf.Max(spacing * 0.5f, minAutoFootSeparation * 0.5f);
             desiredStep = Mathf.Min(desiredStep, maxReach);
             targetX += side * desiredStep;
         }
@@ -2061,13 +2172,16 @@ public class FreezeReplayV2 : MonoBehaviour
         Vector2 target = new Vector2(targetX, rootTarget.y);
 
         if (TryGetGroundPoint(target, out Vector2 groundPoint))
-            target.y = groundPoint.y + GetBodyGroundCenterOffset(groundBody);
+        {
+            Rigidbody2D gb = contactPlan != null ? contactPlan.liveBody : plan.liveBody;
+            target.y = groundPoint.y + GetBodyGroundCenterOffset(gb);
+        }
         
         return target;
     }
 
 
-    private Vector2 GetAutoKneeTarget(LimbPlan plan, Vector2 rootTarget, Vector2 footTarget, float phase, bool isSwingLeg)
+    private Vector2 GetAutoMidJointTarget(LimbPlan plan, Vector2 rootTarget, Vector2 footTarget, float phase, bool isSwingLeg)
     {
         float side = GetLegSideSign(plan);
         float legRange = Mathf.Max(0.01f, walkMaxHipGroundDistance);
@@ -2091,23 +2205,18 @@ public class FreezeReplayV2 : MonoBehaviour
         // is mostly vertical (knees go up). This gives natural bend in
         // all poses instead of always pushing the knee upward.
         Vector2 hipToFoot = footTarget - rootTarget;
-        Vector2 perpendicular;
+        Vector2 perpendicular = Vector2.zero;
+        
         if (hipToFoot.sqrMagnitude > 0.0001f)
         {
-            // Perpendicular: rotate hip-to-foot 90° CCW
             Vector2 perp = new Vector2(-hipToFoot.y, hipToFoot.x).normalized;
             
             // Calculate natural bend direction from the live bodies
-            float bendSign = GetLegBendDirection(plan);
+            float bendSign = GetLimbBendDirection(plan);
             if (bendSign < 0f)
                 perp = -perp;
                 
             perpendicular = perp;
-        }
-        else
-        {
-            // Degenerate case: hip and foot at same position, default to knees up
-            perpendicular = Vector2.up;
         }
 
         Vector2 kneePos = midpoint + perpendicular * ikHeight;
@@ -2117,34 +2226,51 @@ public class FreezeReplayV2 : MonoBehaviour
         float outward = autoKneeOutwardOffset * 0.3f * (1f - crouch * 0.5f);
         kneePos.x += side * outward;
 
+        // Force a frog squat when crouching so the knees don't go backwards into the floor!
+        if (crouch > 0.01f)
+        {
+            Vector2 frogPerp = new Vector2(side, 1f).normalized;
+            perpendicular = Vector2.Lerp(perpendicular, frogPerp, crouch).normalized;
+            kneePos = midpoint + perpendicular * ikHeight;
+            kneePos.x += side * outward; // Re-apply outward offset to new kneePos
+        }
+
         // Swing leg lift during walking
         if (isSwingLeg)
             kneePos.y += walkStepLift * 0.25f * Mathf.Sin(phase * Mathf.PI);
 
+        if (TryGetGroundPoint(kneePos, out Vector2 groundPoint))
+        {
+            if (kneePos.y < groundPoint.y + 0.15f)
+                kneePos.y = groundPoint.y + 0.15f;
+        }
+
         return kneePos;
     }
 
-    private float GetLegBendDirection(LimbPlan plan)
+    private float GetLimbBendDirection(LimbPlan plan)
     {
-        LimbPlan upperPlan = FindUpperLegPlanForSide(plan);
-        LimbPlan footPlan = FindFootPlanForSide(plan);
-        if (upperPlan != null && footPlan != null)
+        bool isLeg = IsLegLimb(plan.liveBody.name);
+        LimbPlan upperPlan = isLeg ? FindUpperLegPlanForSide(plan) : FindUpperArmPlanForSide(plan);
+        LimbPlan endPlan = isLeg ? FindFootPlanForSide(plan) : FindHandPlanForSide(plan);
+
+        if (upperPlan != null && endPlan != null)
         {
-            // Find the lower leg body to act as the knee
+            // Find the lower limb body to act as the knee/elbow
             foreach (var p in limbPlans)
             {
                 if (p == null || p.liveBody == null) continue;
-                if (IsLowerLeg(p.liveBody.name) && IsSameLegSide(p, plan))
+                bool isMid = isLeg ? IsLowerLeg(p.liveBody.name) : IsLowerArm(p.liveBody.name);
+                if (isMid && IsSameLegSide(p, plan))
                 {
                     Vector2 hip = upperPlan.liveBody.position;
-                    Vector2 foot = footPlan.liveBody.position;
+                    Vector2 foot = endPlan.liveBody.position;
                     Vector2 knee = p.liveBody.position;
                     
                     Vector2 hipToFoot = foot - hip;
                     Vector2 hipToKnee = knee - hip;
                     float cross = hipToFoot.x * hipToKnee.y - hipToFoot.y * hipToKnee.x;
                     
-                    // If cross is exactly 0, default to bending "forward" (positive cross)
                     return cross < 0f ? -1f : 1f;
                 }
             }
@@ -2165,8 +2291,15 @@ public class FreezeReplayV2 : MonoBehaviour
         foreach (var plan in limbPlans)
         {
             if (plan == null || plan.liveBody == null || plan.frozenBody == null) continue;
-            if (!IsGroundContactLegPlan(plan)) continue;
+            
+            bool isLeg = IsGroundContactLegPlan(plan);
+            bool isArm = IsGroundContactArmPlan(plan);
+            
+            if (!isLeg && !isArm) continue;
             if (plan.intent != null && plan.intent.IsActiveStrike) continue;
+
+            // Arms must be in Auto mode to plant
+            if (isArm && (plan.intent == null || plan.intent.mode != LimbMoveIntent.MoveMode.Auto)) continue;
 
             Vector2 footStart = currentSnapshot != null && plan.bodyIndex >= 0 && plan.bodyIndex < currentSnapshot.Length
                 ? currentSnapshot[plan.bodyIndex].position
@@ -2182,7 +2315,7 @@ public class FreezeReplayV2 : MonoBehaviour
                     plantedFootTargets[plan.liveBody] = new Vector2(footStart.x, groundPoint.y + groundCenterOffset);
                 }
 
-                if (footDistance < lowestDist)
+                if (isLeg && footDistance < lowestDist)
                 {
                     lowestDist = footDistance;
                     lowestPlan = plan;
@@ -2496,6 +2629,8 @@ public class FreezeReplayV2 : MonoBehaviour
         autoWalkActive = false;
         autoWalkSwingFoot = null;
 
+        if (isJumpNextSimulation) return;
+
         if (!enableAutoWalkFromHipTarget) return;
         if (plantedFootTargets.Count == 0) return;
         if (currentSnapshot == null || rootBodyIndex < 0 || rootBodyIndex >= currentSnapshot.Length) return;
@@ -2556,13 +2691,22 @@ public class FreezeReplayV2 : MonoBehaviour
 
     private LimbPlan FindGroundContactPlanForSide(LimbPlan sideSource)
     {
+        bool isLeg = IsLegLimb(sideSource.liveBody.name);
         foreach (var plan in limbPlans)
         {
-            if (!IsGroundContactLegPlan(plan)) continue;
+            if (plan == null || plan.liveBody == null) continue;
+            if (isLeg)
+            {
+                if (!IsGroundContactLegPlan(plan)) continue;
+            }
+            else
+            {
+                if (!IsGroundContactArmPlan(plan)) continue;
+            }
+
             if (IsSameLegSide(plan, sideSource))
                 return plan;
         }
-
         return null;
     }
 
@@ -2609,6 +2753,32 @@ public class FreezeReplayV2 : MonoBehaviour
         {
             if (plan == null || plan.liveBody == null) continue;
             if (!IsFootLimb(plan.liveBody.name)) continue;
+            if (IsSameLegSide(plan, sideSource))
+                return plan;
+        }
+
+        return null;
+    }
+
+    private LimbPlan FindHandPlanForSide(LimbPlan sideSource)
+    {
+        foreach (var plan in limbPlans)
+        {
+            if (plan == null || plan.liveBody == null) continue;
+            if (!IsHandLimb(plan.liveBody.name)) continue;
+            if (IsSameLegSide(plan, sideSource))
+                return plan;
+        }
+
+        return null;
+    }
+
+    private LimbPlan FindUpperArmPlanForSide(LimbPlan sideSource)
+    {
+        foreach (var plan in limbPlans)
+        {
+            if (plan == null || plan.liveBody == null) continue;
+            if (!IsUpperArm(plan.liveBody.name)) continue;
             if (IsSameLegSide(plan, sideSource))
                 return plan;
         }
@@ -2692,6 +2862,63 @@ public class FreezeReplayV2 : MonoBehaviour
         return false;
     }
 
+    private void CheckJumpTrigger()
+    {
+        if (trackedBodies == null || rootBodyIndex < 0 || rootBodyIndex >= trackedBodies.Count) return;
+        Rigidbody2D liveRoot = trackedBodies[rootBodyIndex];
+        
+        float maxExtension = 0f;
+        int plantedLegs = 0;
+        foreach (var plan in limbPlans)
+        {
+            if (IsGroundContactLegPlan(plan))
+            {
+                float dist = Vector2.Distance(liveRoot.position, plan.liveBody.position);
+                if (dist > maxExtension) maxExtension = dist;
+                plantedLegs++;
+            }
+        }
+
+        bool triggered = false;
+        if (plantedLegs > 0)
+        {
+            if (maxExtension >= walkMaxHipGroundDistance * jumpExtensionThreshold)
+                triggered = true;
+        }
+        else
+        {
+            triggered = true; // No feet planted, already airborne or fell off ledge
+        }
+
+        if (triggered)
+        {
+            hasJumpTriggered = true;
+            Transform frozenRoot = GetFrozenRootTransform();
+            
+            // Force legs out of Auto mode so they don't try to plant themselves mid-air
+            foreach (var plan in limbPlans)
+            {
+                if (plan != null && plan.intent != null && IsLegLimb(plan.liveBody.name))
+                {
+                    if (plan.intent.mode == LimbMoveIntent.MoveMode.Auto)
+                        plan.intent.mode = LimbMoveIntent.MoveMode.BasicBlock;
+                }
+            }
+            
+            Vector2 startRootPos = currentSnapshot != null && rootBodyIndex < currentSnapshot.Length 
+                ? currentSnapshot[rootBodyIndex].position 
+                : liveRoot.position;
+
+            if (frozenRoot != null)
+            {
+                Vector2 jumpVector = (Vector2)frozenRoot.position - startRootPos;
+                Vector2 impulse = jumpVector * jumpForceMultiplier;
+                liveRoot.AddForce(impulse, ForceMode2D.Impulse);
+                Debug.Log($"[FreezeReplayV2] Jump triggered! Impulse: {impulse} (Ext: {maxExtension:F2})");
+            }
+        }
+    }
+
     private bool IsLowerLeg(string limbName)
     {
         string n = limbName.ToLowerInvariant();
@@ -2708,6 +2935,23 @@ public class FreezeReplayV2 : MonoBehaviour
         return limbName.ToLowerInvariant().Contains("thigh");
     }
 
+    private bool IsLowerArm(string limbName)
+    {
+        string n = limbName.ToLowerInvariant();
+        return n.Contains("forearm") || n.Contains("arm 2") || n.Contains("arm2") || n.Contains("lower arm");
+    }
+
+    private bool IsHandLimb(string limbName)
+    {
+        return limbName.ToLowerInvariant().Contains("hand");
+    }
+
+    private bool IsUpperArm(string limbName)
+    {
+        string n = limbName.ToLowerInvariant();
+        return n.Contains("upper arm") || n.Contains("arm 1") || n.Contains("arm1");
+    }
+
     private bool IsGroundContactLegPlan(LimbPlan plan)
     {
         if (plan == null || plan.liveBody == null) return false;
@@ -2715,10 +2959,23 @@ public class FreezeReplayV2 : MonoBehaviour
         return IsLowerLeg(plan.liveBody.name) && FindFootPlanForSide(plan) == null;
     }
 
+    private bool IsGroundContactArmPlan(LimbPlan plan)
+    {
+        if (plan == null || plan.liveBody == null) return false;
+        if (IsHandLimb(plan.liveBody.name)) return true;
+        return IsLowerArm(plan.liveBody.name) && FindHandPlanForSide(plan) == null;
+    }
+
     private bool IsLegLimb(string limbName)
     {
         string n = limbName.ToLowerInvariant();
         return n.Contains("thigh") || n.Contains("calf") || n.Contains("foot") || n.Contains("shin");
+    }
+
+    private bool IsArmLimb(string limbName)
+    {
+        string n = limbName.ToLowerInvariant();
+        return n.Contains("arm") || n.Contains("hand");
     }
 
     private float GetLegSideSign(LimbPlan plan)
@@ -2827,7 +3084,7 @@ public class FreezeReplayV2 : MonoBehaviour
                 ResetFrozenCopy();
             }
             
-            resetCopyKeyString = GUILayout.TextField(resetCopyKeyString, GUILayout.Width(60f));
+            resetCopyKeyString = GUILayout.TextField(resetCopyKeyString, GUILayout.Width(30f));
             if (GUI.changed)
             {
                 if (System.Enum.TryParse(resetCopyKeyString, true, out KeyCode newKey))
@@ -2837,6 +3094,30 @@ public class FreezeReplayV2 : MonoBehaviour
                     PlayerPrefs.Save();
                 }
             }
+
+            GUI.backgroundColor = isJumpNextSimulation ? Color.yellow : Color.white;
+            if (GUILayout.Button(isJumpNextSimulation ? "LAUNCH READY" : "PREP LAUNCH", GUILayout.Width(100f)))
+            {
+                isJumpNextSimulation = !isJumpNextSimulation;
+                if (isJumpNextSimulation)
+                {
+                    CopyLiveToFrozen();
+                    currentSnapshot = CaptureSnapshot();
+                }
+            }
+            GUI.backgroundColor = Color.white;
+
+            GUI.backgroundColor = forceAirborneMode ? new Color(0.2f, 0.8f, 1f) : Color.white;
+            if (GUILayout.Button(forceAirborneMode ? "AIRBORNE" : "GROUNDED", GUILayout.Width(80f)))
+            {
+                forceAirborneMode = !forceAirborneMode;
+                if (forceAirborneMode)
+                {
+                    CopyLiveToFrozen();
+                    currentSnapshot = CaptureSnapshot();
+                }
+            }
+            GUI.backgroundColor = Color.white;
         }
 
         if (GUILayout.Button(movePlanningUIMinimized ? "Show" : "Hide", GUILayout.Width(54f)))
@@ -2939,6 +3220,13 @@ public class FreezeReplayV2 : MonoBehaviour
 
     private void QueueIntentForEntireLimb(LimbPlan sourcePlan, LimbMoveIntent.MoveMode newMode)
     {
+        if (newMode == LimbMoveIntent.MoveMode.Auto && forceAirborneMode)
+        {
+            forceAirborneMode = false;
+            jumpTriggerArmed = false;
+            isJumpNextSimulation = false;
+        }
+
         if (sourcePlan == null || sourcePlan.liveBody == null) return;
         bool isLeg = IsLegLimb(sourcePlan.liveBody.name);
         bool isLeft = IsLeftSide(sourcePlan);
@@ -2963,8 +3251,7 @@ public class FreezeReplayV2 : MonoBehaviour
         switch (mode)
         {
             case LimbMoveIntent.MoveMode.Auto:
-                if (IsLegLimb(plan.liveBody.name)) plan.intent.QueueAuto();
-                else plan.intent.QueueBasicBlock(); // arms don't have Auto
+                plan.intent.QueueAuto();
                 break;
             case LimbMoveIntent.MoveMode.BasicBlock:
                 plan.intent.QueueBasicBlock();
@@ -3405,7 +3692,7 @@ public class FreezeReplayV2 : MonoBehaviour
         foreach (var kvp in frozenRootEditStartPoses)
         {
             Rigidbody2D rb = kvp.Key;
-            if (rb == null || IsFrozenAutoLegBody(rb)) continue;
+            if (rb == null || IsFrozenAutoLimbBody(rb)) continue;
 
             Vector2 newPos = kvp.Value.position + rootDelta;
             float newRot = kvp.Value.rotation;
@@ -3413,7 +3700,7 @@ public class FreezeReplayV2 : MonoBehaviour
             SetFrozenBodyPose(rb, newPos, newRot);
         }
 
-        ApplyFrozenAutoLegEditTargets(rootTarget, rootDelta);
+        ApplyFrozenAutoLimbEditTargets(rootTarget, rootDelta);
         StabilizeFrozenCopyPose();
     }
 
@@ -3444,6 +3731,9 @@ public class FreezeReplayV2 : MonoBehaviour
         {
             targetRootPosition = rootReference + delta.normalized * maxRootMovePerSnapshot;
         }
+
+        // AIRBORNE: No stride or ground restrictions
+        if (forceAirborneMode || isJumpNextSimulation) return targetRootPosition;
 
         if (!enableAutoWalkFromHipTarget) return targetRootPosition;
 
@@ -3490,22 +3780,23 @@ public class FreezeReplayV2 : MonoBehaviour
         return targetRootPosition;
     }
 
-    private void ApplyFrozenAutoLegEditTargets(Vector2 rootTarget, Vector2 rootDelta)
+    private void ApplyFrozenAutoLimbEditTargets(Vector2 rootTarget, Vector2 rootDelta)
     {
         bool editWalkActive = TryGetFrozenAutoWalkEditSwingFoot(rootTarget, out Rigidbody2D editSwingFoot);
+        autoWalkActive = editWalkActive;
 
         foreach (var plan in limbPlans)
         {
-            if (!IsAutoLegPlan(plan)) continue;
+            if (!IsAutoLimbPlan(plan)) continue;
 
             Rigidbody2D rb = plan.frozenBody.GetComponent<Rigidbody2D>();
             if (rb == null || !frozenRootEditStartPoses.TryGetValue(rb, out FrozenRootEditPose startPose)) continue;
 
             bool isSwingLeg = editWalkActive && IsSameLegSide(plan, editSwingFoot);
             bool isSwingContact = editWalkActive && plan.liveBody == editSwingFoot;
-            Vector2 target = GetAutoLegBodyTarget(plan, rootTarget, rootDelta, 0f, isSwingLeg, isSwingContact);
+            Vector2 target = GetAutoLimbBodyTarget(plan, rootTarget, rootDelta, 0f, isSwingLeg, isSwingContact);
             float rotation = rotateFrozenAutoLegsToGeneratedTargets
-                ? GetAutoLegEditRotation(plan, rootTarget, rootDelta, startPose, isSwingLeg, isSwingContact)
+                ? GetAutoLimbEditRotation(plan, rootTarget, rootDelta, startPose, isSwingLeg, isSwingContact)
                 : startPose.rotation;
             SetFrozenBodyPose(rb, target, rotation);
         }
@@ -3514,6 +3805,7 @@ public class FreezeReplayV2 : MonoBehaviour
     private bool TryGetFrozenAutoWalkEditSwingFoot(Vector2 rootTarget, out Rigidbody2D swingFoot)
     {
         swingFoot = null;
+        if (isJumpNextSimulation) return false;
         if (!enableAutoWalkFromHipTarget) return false;
         if (plantedFootTargets.Count == 0) return false;
         if (currentSnapshot == null || rootBodyIndex < 0 || rootBodyIndex >= currentSnapshot.Length) return false;
@@ -3535,7 +3827,7 @@ public class FreezeReplayV2 : MonoBehaviour
         return swingFoot != null;
     }
 
-    private float GetAutoLegEditRotation(
+    private float GetAutoLimbEditRotation(
         LimbPlan plan,
         Vector2 rootTarget,
         Vector2 rootDelta,
@@ -3543,7 +3835,7 @@ public class FreezeReplayV2 : MonoBehaviour
         bool isSwingLeg,
         bool isSwingContact)
     {
-        if (!TryGetAutoLegEditRotationVectors(
+        if (!TryGetAutoLimbEditRotationVectors(
             plan,
             rootTarget,
             rootDelta,
@@ -3563,7 +3855,7 @@ public class FreezeReplayV2 : MonoBehaviour
         return startPose.rotation + Mathf.DeltaAngle(startAngle, targetAngle);
     }
 
-    private bool TryGetAutoLegEditRotationVectors(
+    private bool TryGetAutoLimbEditRotationVectors(
         LimbPlan plan,
         Vector2 rootTarget,
         Vector2 rootDelta,
@@ -3579,31 +3871,33 @@ public class FreezeReplayV2 : MonoBehaviour
             return false;
 
         string limbName = plan.liveBody.name;
-        Vector2 footTarget = GetAutoFootTargetForPlan(plan, rootTarget, rootDelta, isSwingLeg || isSwingContact);
-        Vector2 kneeTarget = GetAutoKneeTarget(plan, rootTarget, footTarget, 0f, isSwingLeg);
+        Vector2 endTarget = GetAutoLimbEndTarget(plan, rootTarget, rootDelta, isSwingLeg || isSwingContact);
+        Vector2 midTarget = GetAutoMidJointTarget(plan, rootTarget, endTarget, 0f, isSwingLeg);
 
-        if (IsUpperLeg(limbName))
+        if (IsUpperLeg(limbName) || IsUpperArm(limbName))
         {
             if (!TryGetFrozenRootEditStartPosition(plan, out Vector2 upperStart)) return false;
 
             startVector = upperStart - frozenRootEditStartRoot;
-            targetVector = kneeTarget - rootTarget;
+            targetVector = midTarget - rootTarget;
             return true;
         }
 
-        if (IsLowerLeg(limbName))
+        if (IsLowerLeg(limbName) || IsLowerArm(limbName))
         {
             if (!TryGetFrozenRootEditStartPosition(plan, out Vector2 lowerStart)) return false;
 
-            LimbPlan footPlan = FindFootPlanForSide(plan);
-            if (TryGetFrozenRootEditStartPosition(footPlan, out Vector2 footStart))
-                startVector = footStart - lowerStart;
-            else if (TryGetFrozenRootEditStartPosition(FindUpperLegPlanForSide(plan), out Vector2 upperStart))
+            bool isLeg = IsLegLimb(limbName);
+            LimbPlan endPlan = isLeg ? FindFootPlanForSide(plan) : FindHandPlanForSide(plan);
+            
+            if (endPlan != null && TryGetFrozenRootEditStartPosition(endPlan, out Vector2 endStart))
+                startVector = endStart - lowerStart;
+            else if (TryGetFrozenRootEditStartPosition(isLeg ? FindUpperLegPlanForSide(plan) : FindUpperArmPlanForSide(plan), out Vector2 upperStart))
                 startVector = lowerStart - upperStart;
             else
                 startVector = lowerStart - frozenRootEditStartRoot;
 
-            targetVector = footTarget - kneeTarget;
+            targetVector = endTarget - midTarget;
             return true;
         }
 
@@ -3637,27 +3931,23 @@ public class FreezeReplayV2 : MonoBehaviour
         return null;
     }
 
-    private bool IsAutoLegPlan(LimbPlan plan)
+    private bool IsAutoLimbPlan(LimbPlan plan)
     {
         return plan != null
             && plan.liveBody != null
             && plan.frozenBody != null
             && plan.intent != null
             && plan.intent.mode == LimbMoveIntent.MoveMode.Auto
-            && IsLegLimb(plan.liveBody.name);
+            && (IsLegLimb(plan.liveBody.name) || IsArmLimb(plan.liveBody.name));
     }
 
-    private bool IsFrozenAutoLegBody(Rigidbody2D body)
+    private bool IsFrozenAutoLimbBody(Rigidbody2D body)
     {
         if (body == null) return false;
-
         foreach (var plan in limbPlans)
         {
-            if (!IsAutoLegPlan(plan)) continue;
-            if (plan.frozenBody == body.transform)
-                return true;
+            if (plan.frozenBody == body && IsAutoLimbPlan(plan)) return true;
         }
-
         return false;
     }
 

@@ -23,6 +23,8 @@ public class FRV2Preset
     // --- Physics Pose Assist ---
     public bool enablePhysicsPoseAssist = true;
     public bool poseAssistOnlyRootAndUnjointedBodies = true;
+    public float jumpForceMultiplier = 300f;
+    public float jumpExtensionThreshold = 0.9f;
     
     // --- Pose Tethers ---
     public bool enablePoseTethers = false;
@@ -124,6 +126,8 @@ public class FRV2Preset
             maxRootMovePerSnapshot = frv2.maxRootMovePerSnapshot,
             enablePhysicsPoseAssist = frv2.enablePhysicsPoseAssist,
             poseAssistOnlyRootAndUnjointedBodies = frv2.poseAssistOnlyRootAndUnjointedBodies,
+            jumpForceMultiplier = frv2.jumpForceMultiplier,
+            jumpExtensionThreshold = frv2.jumpExtensionThreshold,
             poseAssistSpring = frv2.poseAssistSpring,
             poseAssistDamping = frv2.poseAssistDamping,
             maxPoseAssistForce = frv2.maxPoseAssistForce,
@@ -206,6 +210,8 @@ public class FRV2Preset
         frv2.tetherShrinksOverTurn = tetherShrinksOverTurn;
         frv2.startingTetherDistance = startingTetherDistance;
         frv2.tetherBreakForce = tetherBreakForce;
+        frv2.jumpForceMultiplier = jumpForceMultiplier;
+        frv2.jumpExtensionThreshold = jumpExtensionThreshold;
 
         frv2.poseAssistSpring = poseAssistSpring;
         frv2.poseAssistDamping = poseAssistDamping;

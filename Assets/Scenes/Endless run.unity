@@ -1317,6 +1317,7 @@ MonoBehaviour:
   poseAssistAngularSpring: 150
   poseAssistAngularDamping: 30
   maxPoseAssistTorque: 1800
+  airborneAngularSpringMultiplier: 4
   enableAdaptiveLegAssist: 1
   groundMask:
     serializedVersion: 2
@@ -1352,6 +1353,11 @@ MonoBehaviour:
   replantFootDamping: 0.9
   replantFootMaxForce: 800
   replantFootArrivalDistance: 0.15
+  jumpForceMultiplier: 350
+  jumpExtensionThreshold: 0.9
+  forceAirborneMode: 0
+  isJumpNextSimulation: 0
+  jumpTriggerArmed: 0
   enablePosePreviewLoop: 1
   disableDamageDuringPreview: 1
   previewLoopDuration: 1
@@ -1366,7 +1372,7 @@ MonoBehaviour:
   walkFootDamping: 0
   maxWalkFootForce: 0
   minAutoFootSeparation: 0.85
-  autoKneeOutwardOffset: 0.55
+  autoKneeOutwardOffset: 0
   autoCrouchKneeLift: 0.35
   rotateFrozenAutoLegsToGeneratedTargets: 1
   driveAutoLegsToGeneratedTargets: 1
@@ -1399,7 +1405,8 @@ MonoBehaviour:
   logRigValidationDetails: 1
   disableLegacyMotorControllers: 1
   currentPhase: 0
-  turnCount: 35
+  turnCount: 43
+  resetCopyKey: 99
   playerObj: {fileID: 0}
   frozenCopy: {fileID: 0}
   trackedBodies:
@@ -1426,7 +1433,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1633812800}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 2938020949346564c9562004e57c1373, type: 3}
   m_Name: 
