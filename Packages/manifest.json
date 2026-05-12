@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "com.anklebreaker.unity-mcp": "https://github.com/AnkleBreaker-Studio/unity-mcp-plugin.git",
     "com.unity.adaptiveperformance": "6.0.0",
     "com.unity.ai.navigation": "2.0.10",
     "com.unity.barracuda": "3.0.2",

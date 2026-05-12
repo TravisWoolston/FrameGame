@@ -21,8 +21,8 @@ The current direction favors:
 - **angle-driven movement** via PoseDriver hinge motors as the primary control method
 - minimal force — only the root/hips body gets translational force to maintain structure
 - planted feet using temporary FixedJoint2D for ground contact stability
-- Auto legs used primarily for walking/standing/upper-body positioning
-- upper-body limbs manually poseable as Basic/Block or Strike
+- **Auto Limbs** used primarily for walking, standing, and hand-grounding during posing
+- upper-body limbs manually poseable as Basic/Block or Strike (unless in Auto mode)
 - **chain-isolated dragging** — moving a hand only affects its arm chain; moving a foot only affects its leg chain
 
 ## Current Architecture
@@ -40,9 +40,9 @@ Responsibilities:
 - records replay frames on `FixedUpdate`
 - runs the posing preview loop
 - wires `PoseDriver` components
-- manages `LimbMoveIntent` state
-- drives Auto-leg walking
-- handles planted foot joints
+- manage `LimbMoveIntent` state (Auto/Basic/Strike/Recovery)
+- drive Auto-limb movement and hand/foot planting
+- handle planted limb joints (FixedJoint2D) and replanting (TargetJoint2D)
 - stabilizes and clamps the frozen copy
 - draws the simple IMGUI move-planning UI
 - **loads/saves presets** via `FRV2Preset` system
@@ -57,7 +57,8 @@ Important methods:
 - `BeginLimbPlansForSimulation()`: begins limb intents, caches planted feet, creates planted-foot joints
 - `ApplyAdaptiveLegAssist()`: decides whether Auto-walk is active
 - `ApplyAutoWalkLegAssist()`: current Auto-walk driver
-- `GetAutoKneeTarget()`: 2-bone IK for knee placement — knees go UP (y-axis), with small lateral offset for visual separation
+- `GetAutoMidJointTarget()`: 2-bone IK for knee/elbow placement — uses cross-product from live bodies for bend direction
+- `GetAutoLimbEndTarget()`: calculates world/relative target for feet and hands based on stride and planting state
 - `StabilizeFrozenCopyPose()`: clamps frozen copy root, joint limits, joint anchors, and floor penetration
 - `ApplyCurrentLowForceDefaults()`: context-menu/reset button for the current intended tuning
 - `SaveCurrentPreset()` / `LoadPreset()`: preset file I/O
@@ -156,7 +157,7 @@ A PD motor controller on live hinge-jointed limbs. It drives a live `HingeJoint2
 Current relevance:
 
 - **Primary control method** in the angle-driven preset — all jointed limbs are driven by PoseDriver hinge motors
-- Auto legs use PoseDriver when `usePoseDriversForAutoLegs = true`
+- Auto limbs use PoseDriver when `usePoseDriversForAutoLimbs = true`
 - Auto-walk also has its own joint-motor path controlled by `useJointMotorsForAutoWalk`
 - PoseDriver settings on FRV2 (poseKp, poseKd, etc.) are global and override the per-PoseDriver values during `ApplyPoseDriverSettings()`
 
@@ -176,8 +177,10 @@ Strike behavior:
 - strike limbs get a velocity multiplier during simulation
 - strike damage and impulse are applied through `ImpactDamage`
 - after a strike, the limb enters recovery for `strikeRecoverySnapshots`
-
-Legs default to `Auto` when `defaultLegsToAuto` is enabled. In Auto, legs are not manually poseable through `SmartPoser`.
+- **Auto state**: Supported for both legs and arms. 
+  - Legs default to `Auto` when `defaultLegsToAuto` is enabled.
+  - Arms support `Auto` for hand-grounding interaction. 
+  - In Auto, limbs are not manually poseable through `SmartPoser`; they are driven by the IK system toward ground or walk targets.
 
 ### `ImpactDamage.cs`
 
@@ -288,20 +291,19 @@ Auto-walk is experimental and is one of the more fragile current systems.
 - the swing foot's planted joint is released
 - `ApplyAutoWalkLegAssist()` drives walking
 - `useJointMotorsForAutoWalk` rotates Auto thigh/calf/foot joints toward generated targets
-- `reduceAutoWalkLimbForcesWhenUsingMotors` reduces direct forces on thigh/calf so joints do more of the work
+- `useJointMotorsForAutoWalk` rotates Auto thigh/calf/foot joints toward generated targets
+- `reduceAutoWalkLimbForcesWhenUsingMotors` reduces direct forces on limb segments so joints do more of the work
 
-### Knee IK (GetAutoKneeTarget)
+### Limb IK (GetAutoMidJointTarget / GetAutoLimbEndTarget)
 
-Uses 2-bone IK triangle math to compute knee position:
-- IK height = `√(halfLeg² - halfDist²)` applied **perpendicular** to the hip→foot line
-- The perpendicular is chosen so knees always have a positive y-component (bend forward/up, never behind/under)
-- When standing upright: hip-foot line is vertical → perpendicular is horizontal → knees go forward
-- When crouching: hip-foot line is more horizontal → perpendicular is more vertical → knees go up naturally
-- Small lateral offset (`autoKneeOutwardOffset * 0.3f`) for visual leg separation
-- Outward offset decreases during deep crouch (`1 - crouch * 0.5`)
-- Swing leg gets additional lift during walk phase
+Generalized 2-bone IK for both legs and arms:
+- **Mid-joint placement**: IK height = `√(halfLimb² - halfDist²)` applied perpendicular to the root→end line.
+- **Bend Direction**: Dynamically determined by `GetLimbBendDirection()` using the cross-product of the live limb's current hip-knee-foot or shoulder-elbow-hand triangle. This preserves anatomical bend (e.g., knees-out, elbows-out).
+- **Stride Control**: Foot targets track relative to `rootTarget.x` with a `walkMaxStrideDistance` limit.
+- **Hand Planting**: Hands in Auto mode will "plant" if they are near the ground when posing begins, identical to foot planting.
+- Small lateral offsets and lift are applied to swing limbs during walking.
 
-If calves arch wrong or legs do the splits, the issue is in `GetAutoKneeTarget()`.
+If limbs snap or bend backward, check `GetLimbBendDirection()` and `GetAutoMidJointTarget()`.
 
 ### Troubleshooting
 
@@ -332,6 +334,14 @@ At the start of each simulation/preview, `PreReleasePlantedFeetByFrozenTarget()`
 - Works for both preview and committed simulation paths
 - Logged to console when a foot is pre-released
 - Included in the preset system (`FRV2Preset`)
+
+### Airborne Physics & Posing
+
+Airborne behavior differs significantly from grounded posing:
+- **Unrestricted Posing**: When `forceAirborneMode` or `isJumpNextSimulation` is active, the frozen copy's root skips all stride and ground constraints.
+- **Local-Space Tethers**: Limbs are leashed relative to the core (`connectedBody = rootRb`) using `DistanceJoint2D`. This allows the character to fall naturally under gravity while limbs rigidly track their relative pose offsets.
+- **Core Rotation**: Root rotation is driven by a boosted `airborneAngularSpringMultiplier` (default: 10x) for "rigid" angular control without position-tethering the hips to world-space.
+- **Capture Sync**: Toggling Airborne/Launch Ready modes calls `CopyLiveToFrozen()` to snap the ghost to the live fighter's current physical location.
 
 Feet can still break free via FixedJoint2D break force/torque during simulation if needed.
 
