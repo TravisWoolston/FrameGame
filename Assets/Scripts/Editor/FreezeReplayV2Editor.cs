@@ -31,6 +31,7 @@ public class FreezeReplayV2Editor : Editor
             "playerPrefab",
             "spawnOffset",
             "frozenCopyColor",
+            "centerMainCameraOnSnapshotStart",
             "groundMask");
 
         DrawSection(drawn, "Turn Loop",

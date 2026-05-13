@@ -1305,7 +1305,7 @@ MonoBehaviour:
   poseMaxSpeed: 800
   ignoreJointLimits: 1
   enablePhysicsPoseAssist: 0
-  poseAssistOnlyRootAndUnjointedBodies: 0
+  poseAssistOnlyRootAndUnjointedBodies: 1
   enablePoseTethers: 1
   poseTetherMaxDistance: 0.05
   tetherShrinksOverTurn: 1

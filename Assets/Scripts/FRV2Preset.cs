@@ -126,6 +126,11 @@ public class FRV2Preset
             maxRootMovePerSnapshot = frv2.maxRootMovePerSnapshot,
             enablePhysicsPoseAssist = frv2.enablePhysicsPoseAssist,
             poseAssistOnlyRootAndUnjointedBodies = frv2.poseAssistOnlyRootAndUnjointedBodies,
+            enablePoseTethers = frv2.enablePoseTethers,
+            poseTetherMaxDistance = frv2.poseTetherMaxDistance,
+            tetherShrinksOverTurn = frv2.tetherShrinksOverTurn,
+            startingTetherDistance = frv2.startingTetherDistance,
+            tetherBreakForce = frv2.tetherBreakForce,
             jumpForceMultiplier = frv2.jumpForceMultiplier,
             jumpExtensionThreshold = frv2.jumpExtensionThreshold,
             poseAssistSpring = frv2.poseAssistSpring,
@@ -205,6 +210,8 @@ public class FRV2Preset
         frv2.ignoreJointLimits = ignoreJointLimits;
         frv2.limitFrozenRootMovement = limitFrozenRootMovement;
         frv2.maxRootMovePerSnapshot = maxRootMovePerSnapshot;
+        frv2.enablePhysicsPoseAssist = enablePhysicsPoseAssist;
+        frv2.poseAssistOnlyRootAndUnjointedBodies = poseAssistOnlyRootAndUnjointedBodies;
         frv2.enablePoseTethers = enablePoseTethers;
         frv2.poseTetherMaxDistance = poseTetherMaxDistance;
         frv2.tetherShrinksOverTurn = tetherShrinksOverTurn;

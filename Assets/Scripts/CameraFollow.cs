@@ -5,13 +5,18 @@ public class CameraFollow : MonoBehaviour
     public Transform target; // The GameObject the camera should follow
     public float smoothSpeed = 0.125f; // Smoothing factor for camera movement
     public Vector2 offset; // Offset from the target's position (use Vector2)
+    [Tooltip("When enabled, FreezeReplayV2 can pin the camera to each newly captured turn-start position.")]
+    public bool holdSnapshotCenter = false;
     public float highScore = float.MinValue;
     public float bestTime = float.MaxValue;
- private float updateInterval = 5.0f; // Interval in seconds
+    private float updateInterval = 5.0f; // Interval in seconds
     private float nextUpdateTime = 0f; // Time for the next update
 
     void FixedUpdate()
     {
+        if (holdSnapshotCenter)
+            return;
+
         if (Time.time >= nextUpdateTime)
         {
             // Update camera target based on the highest score
@@ -26,6 +31,9 @@ public class CameraFollow : MonoBehaviour
 
     void LateUpdate()
     {
+        if (holdSnapshotCenter)
+            return;
+
         if (target != null)
         {
             Vector2 desiredPosition = (Vector2)target.position + offset;
@@ -51,7 +59,23 @@ public class CameraFollow : MonoBehaviour
 
         return bestAgent;
     }
-    public void followHighScore(){
+
+    public void CenterOnSnapshot(Vector2 snapshotPosition)
+    {
+        holdSnapshotCenter = true;
+        target = null;
+
+        Vector2 desiredPosition = snapshotPosition + offset;
+        transform.position = new Vector3(desiredPosition.x, desiredPosition.y, transform.position.z);
+    }
+
+    public void ResumeAutoFollow()
+    {
+        holdSnapshotCenter = false;
+    }
+
+    public void followHighScore()
+    {
         return;
     }
 }

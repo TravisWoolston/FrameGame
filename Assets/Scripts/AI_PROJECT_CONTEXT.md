@@ -52,7 +52,7 @@ Important methods:
 
 - `Start()`: instantiate/build/wire initial fighter and frozen copy; calls `TryAutoLoadPreset()`
 - `CommitPose()`: stop preview, restore snapshot, begin committed sim
-- `StartPosePreviewLoop()`: stabilize frozen copy, restore snapshot, simulate preview
+- `StartPosePreviewLoop()`: restore the live fighter from the captured snapshot and simulate preview against the current authored frozen copy without mutating it
 - `FixedUpdate()`: applies assist systems and advances committed/preview fixed steps
 - `BeginLimbPlansForSimulation()`: begins limb intents, caches planted feet, creates planted-foot joints
 - `ApplyAdaptiveLegAssist()`: decides whether Auto-walk is active
@@ -73,6 +73,7 @@ Serializable preset system for FRV2 tuning values.
 - `preset.ApplyTo(frv2)`: apply a preset to FRV2
 - `preset.SaveToFile()` / `FRV2Preset.LoadFromFile(name)`: JSON files in `[ProjectRoot]/FRV2Presets/`
 - `FRV2Preset.GetAvailablePresetNames()`: lists saved presets
+- Keep `CaptureFrom()` and `ApplyTo()` symmetric. A missing field on either side makes presets look correct in JSON but behave differently after reload.
 
 Presets cover: PoseDriver gains, pose assist springs/forces, planted foot joints, auto-walk, adaptive leg assist, combat multipliers, turn duration, and more.
 
@@ -225,7 +226,7 @@ For older prebuilt fighters:
 
 Preview:
 
-1. `StartPosePreviewLoop()` stabilizes the frozen copy and restores `currentSnapshot`.
+1. `StartPosePreviewLoop()` restores the live fighter from `currentSnapshot` and reads the frozen copy as the target pose without mutating it.
 2. It begins limb plans and creates planted foot joints.
 3. It unfreezes live bodies.
 4. Fixed steps run for the same count as a committed turn.
@@ -238,10 +239,13 @@ Commit:
 3. It simulates exactly `turnDuration` using `FixedUpdate`.
 4. `UpdateCapturing()` copies live to frozen, captures snapshot, and returns to posing.
 
-Preview-vs-commit alignment (fixed in this session):
-- Both paths now call `StabilizeFrozenCopyPose()` before starting
+Preview-vs-commit alignment:
+- `CommitPose()` stabilizes the authored frozen copy before the real turn begins
+- Preview restarts do **not** call `StabilizeFrozenCopyPose()` and must not rewrite frozen-copy transforms
 - Frozen copy is hidden (colliders disabled) before `BeginLimbPlansForSimulation()` in commit
-- The order of operations in commit now matches preview more closely
+- The preview loop restores the live fighter from the last captured snapshot, then simulates toward the current authored copy
+
+**Important source-of-truth rule:** the frozen copy is the authored target pose, and the preview loop must be read-only with respect to it. Preview simulation must not copy live transforms back into the frozen copy, must not stabilize/reconcile/lift the copy on loop restart, and must not recapture `currentSnapshot`. `currentSnapshot` is the authoritative simulation start state and should remain unchanged from the last real capture until the next real capture. It is only replaced during initial setup and `UpdateCapturing()` after a committed turn.
 
 If preview and capture still do not match, check:
 
@@ -259,12 +263,16 @@ Current intended behavior:
 - visible/idle frozen copy is `Kinematic`
 - non-root limb drag temporarily makes it `Dynamic`
 - root/hip drag is handled kinematically
+- preview simulation reads the frozen copy but does not edit it
 - after edits, `StabilizeFrozenCopyPose()`:
   - clamps root movement
   - clamps joint limits unless `ignoreJointLimits` is on
   - reconciles hinge anchors so connected limbs stay attached
   - lifts the ghost above the detected floor if `preventFrozenCopyGroundPenetration` is on
   - zeros velocities
+- replay completion restores the planning ghost from `currentSnapshot`, not from replay-driven live transforms
+
+If the frozen copy visibly changes during preview playback without direct user posing, treat that as a bug. The only normal writers to frozen-copy transforms are explicit user edits, `ResetFrozenCopy()` from the existing snapshot, initial setup, and `UpdateCapturing()` after a real committed turn.
 
 If the frozen copy goes through the floor:
 
@@ -289,6 +297,7 @@ Auto-walk is experimental and is one of the more fragile current systems.
 - one foot is selected as the swing foot
 - planted foot bodies can get temporary `FixedJoint2D` anchors
 - the swing foot's planted joint is released
+- the active swing foot starts near its natural side of the body, then blends toward a longer travel-direction landing as hip travel becomes more committed and leg reach allows it
 - `ApplyAutoWalkLegAssist()` drives walking
 - `useJointMotorsForAutoWalk` rotates Auto thigh/calf/foot joints toward generated targets
 - `useJointMotorsForAutoWalk` rotates Auto thigh/calf/foot joints toward generated targets
@@ -299,7 +308,8 @@ Auto-walk is experimental and is one of the more fragile current systems.
 Generalized 2-bone IK for both legs and arms:
 - **Mid-joint placement**: IK height = `√(halfLimb² - halfDist²)` applied perpendicular to the root→end line.
 - **Bend Direction**: Dynamically determined by `GetLimbBendDirection()` using the cross-product of the live limb's current hip-knee-foot or shoulder-elbow-hand triangle. This preserves anatomical bend (e.g., knees-out, elbows-out).
-- **Stride Control**: Foot targets track relative to `rootTarget.x` with a `walkMaxStrideDistance` limit.
+- **Stride Control**: Foot targets track relative to `rootTarget.x` with a `walkMaxStrideDistance` limit. The single swing foot keeps a neutral-side bias for smaller edits, then reaches farther in the travel direction as the hip move becomes more committed; available reach still shrinks naturally when the hips are low.
+- **Floor-aware knee bend**: swing or otherwise unsupported leg IK compares the preferred knee bend with its mirrored alternative and keeps the candidate with better ground clearance when the original bend would fold toward the floor. Planted support legs keep their existing bend direction so contact posing stays stable.
 - **Hand Planting**: Hands in Auto mode will "plant" if they are near the ground when posing begins, identical to foot planting.
 - Small lateral offsets and lift are applied to swing limbs during walking.
 
@@ -341,7 +351,7 @@ Airborne behavior differs significantly from grounded posing:
 - **Unrestricted Posing**: When `forceAirborneMode` or `isJumpNextSimulation` is active, the frozen copy's root skips all stride and ground constraints.
 - **Local-Space Tethers**: Limbs are leashed relative to the core (`connectedBody = rootRb`) using `DistanceJoint2D`. This allows the character to fall naturally under gravity while limbs rigidly track their relative pose offsets.
 - **Core Rotation**: Root rotation is driven by a boosted `airborneAngularSpringMultiplier` (default: 10x) for "rigid" angular control without position-tethering the hips to world-space.
-- **Capture Sync**: Toggling Airborne/Launch Ready modes calls `CopyLiveToFrozen()` to snap the ghost to the live fighter's current physical location.
+- **Mode Toggle Isolation**: Toggling Airborne/Launch Ready restarts preview from the existing authored copy and captured snapshot. It does not call `CopyLiveToFrozen()` and does not replace `currentSnapshot`.
 
 Feet can still break free via FixedJoint2D break force/torque during simulation if needed.
 

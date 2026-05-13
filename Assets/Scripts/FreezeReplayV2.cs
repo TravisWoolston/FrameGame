@@ -81,6 +81,10 @@ public class FreezeReplayV2 : MonoBehaviour
     public float spawnGroundProbeDistance = 40f;
     public float spawnGroundClearance = 0.03f;
 
+    [Header("=== Camera Framing ===")]
+    [Tooltip("Center the main camera on the root position of each newly captured snapshot, including the initial spawn snapshot.")]
+    public bool centerMainCameraOnSnapshotStart = true;
+
     [Header("=== Pose Driving ===")]
     [Tooltip("Proportional gain for PoseDrivers. Higher = snappier.")]
     public float poseKp = 40f;
@@ -182,6 +186,9 @@ public class FreezeReplayV2 : MonoBehaviour
 
     [Tooltip("Once the replanting foot arrives within this distance of its target, convert to a planted FixedJoint2D.")]
     public float replantFootArrivalDistance = 0.15f;
+
+    [Tooltip("Log planted-foot release and replant arrival details. Useful while tuning, noisy during preview loops.")]
+    public bool logFootReplantingDetails = false;
 
     [Header("=== Jumping & Airborne ===")]
     [Tooltip("Force multiplier applied when legs hit max extension to launch the fighter.")]
@@ -354,6 +361,7 @@ public class FreezeReplayV2 : MonoBehaviour
     private List<LimbPlan> limbPlans = new List<LimbPlan>();
     private int rootBodyIndex = -1;
     private Dictionary<Rigidbody2D, Vector2> plantedFootTargets = new Dictionary<Rigidbody2D, Vector2>();
+    private Dictionary<Rigidbody2D, Vector2> frozenRootEditPlantedLegTargets = new Dictionary<Rigidbody2D, Vector2>();
     private Dictionary<Rigidbody2D, FixedJoint2D> plantedFootJoints = new Dictionary<Rigidbody2D, FixedJoint2D>();
     private Dictionary<Rigidbody2D, TargetJoint2D> replantingFootJoints = new Dictionary<Rigidbody2D, TargetJoint2D>();
     private Dictionary<Rigidbody2D, Vector2> replantingFootTargets = new Dictionary<Rigidbody2D, Vector2>();
@@ -417,6 +425,7 @@ public class FreezeReplayV2 : MonoBehaviour
         // Take initial snapshot (frozen copy matches live figure at spawn)
         CopyLiveToFrozen();
         currentSnapshot = CaptureSnapshot();
+        CenterMainCameraOnSnapshot(currentSnapshot);
 
         // Cache health
         fighterHealth = playerObj.GetComponentInChildren<FighterHealth>();
@@ -587,6 +596,7 @@ public class FreezeReplayV2 : MonoBehaviour
 
         // Store this as the new snapshot
         currentSnapshot = CaptureSnapshot();
+        CenterMainCameraOnSnapshot(currentSnapshot);
 
         // Save health (this is the "real" HP after this turn's damage)
         if (enableHealthSnapshots && fighterHealth != null)
@@ -682,9 +692,10 @@ public class FreezeReplayV2 : MonoBehaviour
     {
         if (currentSnapshot == null) return;
 
-        // Stabilize the frozen target before starting — must match CommitPose()
-        StabilizeFrozenCopyPose();
+        Dictionary<Rigidbody2D, FrozenRootEditPose> authoredFrozenPose = CaptureFrozenCopyPose();
 
+        // Preview simulation is read-only with respect to the authored frozen copy.
+        // The copy is stabilized when the player edits or commits it, not on preview restarts.
         RestoreSnapshot(currentSnapshot);
         SetPreviewDamageEnabled(false);
         posePreviewTimeRemaining = GetPreviewLoopDuration();
@@ -692,6 +703,7 @@ public class FreezeReplayV2 : MonoBehaviour
         simTimeRemaining = posePreviewTimeRemaining;
         BeginLimbPlansForSimulation();
         UnfreezeLiveBodies();
+        RestoreFrozenCopyPose(authoredFrozenPose);
         posePreviewLoopRunning = true;
         posePreviewRestartRequested = false;
     }
@@ -887,6 +899,30 @@ public class FreezeReplayV2 : MonoBehaviour
         return snap;
     }
 
+    private void CenterMainCameraOnSnapshot(BodySnapshot[] snapshot)
+    {
+        if (!centerMainCameraOnSnapshotStart) return;
+        if (snapshot == null || snapshot.Length == 0) return;
+
+        int cameraBodyIndex = rootBodyIndex >= 0 && rootBodyIndex < snapshot.Length
+            ? rootBodyIndex
+            : 0;
+        Vector2 center = snapshot[cameraBodyIndex].position;
+
+        Camera mainCamera = Camera.main;
+        if (mainCamera == null) return;
+
+        CameraFollow cameraFollow = mainCamera.GetComponent<CameraFollow>();
+        if (cameraFollow != null)
+        {
+            cameraFollow.CenterOnSnapshot(center);
+            return;
+        }
+
+        Transform cameraTransform = mainCamera.transform;
+        cameraTransform.position = new Vector3(center.x, center.y, cameraTransform.position.z);
+    }
+
     // ===== RECORDING =====
 
     /// <summary>
@@ -1016,8 +1052,9 @@ public class FreezeReplayV2 : MonoBehaviour
         if (currentPhase == TurnPhase.Posing)
             FreezeLiveBodies();
 
-        // Restore to latest snapshot
-        CopyLiveToFrozen();
+        // Restore the planning ghost from the authoritative captured snapshot,
+        // never from replay-driven live transforms.
+        ResetFrozenCopy();
 
         // Resume posing — freeze live bodies again
         FreezeLiveBodies();
@@ -1753,9 +1790,8 @@ public class FreezeReplayV2 : MonoBehaviour
                 continue;
             }
 
-            // NEW FIX: In airborne mode, we only tether the ENDS of the limbs (feet/hands).
-            // Tethers on upper limbs (thighs/upper arms) bind against the root's hip/shoulder joints,
-            // preventing rotation. The HingeJoint2D already handles their position relative to the root.
+            // In airborne mode, only tether limb ends. Grounded motion keeps
+            // the full tether behavior so editor-tuned grounded poses still apply.
             if (isAirborne)
             {
                 string n = rb.name;
@@ -1768,6 +1804,7 @@ public class FreezeReplayV2 : MonoBehaviour
                         Destroy(existing);
                         poseTetherJoints.Remove(rb);
                     }
+
                     continue;
                 }
             }
@@ -2119,7 +2156,7 @@ public class FreezeReplayV2 : MonoBehaviour
         LimbPlan contactPlan = FindGroundContactPlanForSide(plan);
         
         // If this limb is planted and NOT swinging, it MUST stay exactly at its anchor.
-        if (!isSwingContact && contactPlan != null && plantedFootTargets.TryGetValue(contactPlan.liveBody, out Vector2 plantedTarget))
+        if (!isSwingContact && contactPlan != null && TryGetAutoLimbPlantedTarget(contactPlan.liveBody, out Vector2 plantedTarget))
             return plantedTarget;
 
         float direction = Mathf.Abs(rootDelta.x) > 0.001f ? Mathf.Sign(rootDelta.x) : autoWalkDirection;
@@ -2129,6 +2166,7 @@ public class FreezeReplayV2 : MonoBehaviour
         bool isLeg = IsLegLimb(plan.liveBody.name);
         bool hasTravel = autoWalkActive && isLeg;
         float targetX = rootTarget.x;
+        float side = GetLegSideSign(plan);
         
         // Calculate max reachable horizontal distance to ensure limb mathematically stays on the floor
         float maxReach = walkFootSpacing; 
@@ -2146,10 +2184,20 @@ public class FreezeReplayV2 : MonoBehaviour
         {
             if (isSwingContact)
             {
-                // Swing foot steps forward in the direction of travel
-                float desiredStep = walkFootSpacing + walkStepLead;
-                desiredStep = Mathf.Min(desiredStep, maxReach); // Clamp to physical reach
-                targetX += direction * desiredStep;
+                // Small hip edits keep the swing foot close to its natural side.
+                // Larger committed moves progressively let that foot land farther
+                // in the travel direction, up to the current physically reachable arc.
+                float neutralSpacing = Mathf.Min(
+                    Mathf.Max(walkFootSpacing * 0.5f, minAutoFootSeparation * 0.5f),
+                    maxReach);
+                float neutralTargetX = rootTarget.x + side * neutralSpacing;
+
+                float strideProgress = GetAutoWalkStrideProgress(rootTarget, rootDelta);
+                float leadReach = Mathf.Min(walkFootSpacing + walkStepLead, maxReach);
+                float committedReach = Mathf.Lerp(leadReach, maxReach, strideProgress);
+                float directionalTargetX = rootTarget.x + direction * Mathf.Max(neutralSpacing, committedReach);
+
+                targetX = Mathf.Lerp(neutralTargetX, directionalTargetX, strideProgress);
             }
             else
             {
@@ -2162,7 +2210,6 @@ public class FreezeReplayV2 : MonoBehaviour
         else
         {
             // Idle standing: keep limbs separated anatomically
-            float side = GetLegSideSign(plan);
             float spacing = isLeg ? walkFootSpacing : 1.2f;
             float desiredStep = Mathf.Max(spacing * 0.5f, minAutoFootSeparation * 0.5f);
             desiredStep = Mathf.Min(desiredStep, maxReach);
@@ -2178,6 +2225,41 @@ public class FreezeReplayV2 : MonoBehaviour
         }
         
         return target;
+    }
+
+    private float GetAutoWalkStrideProgress(Vector2 rootTarget, Vector2 rootDelta)
+    {
+        float horizontalTravel = Mathf.Abs(rootDelta.x);
+        if (horizontalTravel <= 0.0001f
+            && currentSnapshot != null
+            && rootBodyIndex >= 0
+            && rootBodyIndex < currentSnapshot.Length)
+        {
+            horizontalTravel = Mathf.Abs(rootTarget.x - currentSnapshot[rootBodyIndex].position.x);
+        }
+
+        float startTravel = Mathf.Max(0f, walkMinHipTravel);
+        float strideTravelLimit = walkMaxStrideDistance;
+        if (limitFrozenRootMovement && maxRootMovePerSnapshot > 0f)
+            strideTravelLimit = Mathf.Min(strideTravelLimit, maxRootMovePerSnapshot);
+
+        float fullTravel = Mathf.Max(startTravel + 0.001f, strideTravelLimit);
+        return Mathf.InverseLerp(startTravel, fullTravel, horizontalTravel);
+    }
+
+    private bool TryGetAutoLimbPlantedTarget(Rigidbody2D contactBody, out Vector2 plantedTarget)
+    {
+        plantedTarget = Vector2.zero;
+
+        if (contactBody == null)
+            return false;
+
+        if (frozenRootEditActive && IsLegLimb(contactBody.name))
+        {
+            return frozenRootEditPlantedLegTargets.TryGetValue(contactBody, out plantedTarget);
+        }
+
+        return plantedFootTargets.TryGetValue(contactBody, out plantedTarget);
     }
 
 
@@ -2219,21 +2301,23 @@ public class FreezeReplayV2 : MonoBehaviour
             perpendicular = perp;
         }
 
-        Vector2 kneePos = midpoint + perpendicular * ikHeight;
-
         // Small lateral offset just for visual separation between left/right legs
         float crouch = Mathf.InverseLerp(legRange * 0.9f, legRange * 0.2f, distance);
         float outward = autoKneeOutwardOffset * 0.3f * (1f - crouch * 0.5f);
-        kneePos.x += side * outward;
+        Vector2 kneeOffset = new Vector2(side * outward, 0f);
+        Vector2 kneePos = midpoint + perpendicular * ikHeight + kneeOffset;
 
         // Force a frog squat when crouching so the knees don't go backwards into the floor!
         if (crouch > 0.01f)
         {
             Vector2 frogPerp = new Vector2(side, 1f).normalized;
             perpendicular = Vector2.Lerp(perpendicular, frogPerp, crouch).normalized;
-            kneePos = midpoint + perpendicular * ikHeight;
-            kneePos.x += side * outward; // Re-apply outward offset to new kneePos
+            kneePos = midpoint + perpendicular * ikHeight + kneeOffset;
         }
+
+        bool hasPlantedSupportContact = HasPlantedGroundContactForSide(plan);
+        if (IsLegLimb(plan.liveBody.name) && (isSwingLeg || !hasPlantedSupportContact))
+            kneePos = ChooseLegKneeTargetAwayFromGround(midpoint, perpendicular, ikHeight, kneeOffset, kneePos);
 
         // Swing leg lift during walking
         if (isSwingLeg)
@@ -2246,6 +2330,45 @@ public class FreezeReplayV2 : MonoBehaviour
         }
 
         return kneePos;
+    }
+
+    private Vector2 ChooseLegKneeTargetAwayFromGround(
+        Vector2 midpoint,
+        Vector2 perpendicular,
+        float ikHeight,
+        Vector2 kneeOffset,
+        Vector2 preferredKnee)
+    {
+        if (ikHeight <= 0.0001f || perpendicular.sqrMagnitude <= 0.0001f)
+            return preferredKnee;
+
+        Vector2 oppositeKnee = midpoint - perpendicular * ikHeight + kneeOffset;
+        float preferredClearance = GetGroundClearanceAt(preferredKnee);
+        float oppositeClearance = GetGroundClearanceAt(oppositeKnee);
+
+        const float floorClearanceBias = 0.05f;
+        return oppositeClearance > preferredClearance + floorClearanceBias
+            ? oppositeKnee
+            : preferredKnee;
+    }
+
+    private float GetGroundClearanceAt(Vector2 position)
+    {
+        if (!TryGetGroundPoint(position, out Vector2 groundPoint))
+            return position.y;
+
+        return position.y - groundPoint.y;
+    }
+
+    private bool HasPlantedGroundContactForSide(LimbPlan plan)
+    {
+        if (plan == null || plan.liveBody == null) return false;
+
+        LimbPlan contactPlan = FindGroundContactPlanForSide(plan);
+        Vector2 plantedTarget;
+        return contactPlan != null
+            && contactPlan.liveBody != null
+            && TryGetAutoLimbPlantedTarget(contactPlan.liveBody, out plantedTarget);
     }
 
     private float GetLimbBendDirection(LimbPlan plan)
@@ -2325,15 +2448,59 @@ public class FreezeReplayV2 : MonoBehaviour
             }
         }
 
-        // Failsafe: if no feet were close enough to the ground, forcefully plant the lowest foot.
-        // This ensures walking constraints and anchors cannot be "broken out of" if the character is slightly airborne.
-        if (plantedFootTargets.Count == 0 && lowestPlan != null)
+        // Failsafe: if no leg contact was close enough to the ground, forcefully plant the lowest foot.
+        // Auto hands may also be planted, but they should never satisfy the grounded-walk foot support rule.
+        if (!HasPlantedGroundContactLegTarget() && lowestPlan != null)
         {
             float groundCenterOffset = GetBodyGroundCenterOffset(lowestPlan.liveBody);
             plantedFootTargets[lowestPlan.liveBody] = new Vector2(lowestFootStart.x, lowestGroundPoint.y + groundCenterOffset);
         }
 
         ConfigureAutoWalkPlan();
+    }
+
+    private void CacheFrozenRootEditPlantedLegTargets()
+    {
+        frozenRootEditPlantedLegTargets.Clear();
+        if (!enablePlantedFootStability) return;
+
+        LimbPlan lowestPlan = null;
+        float lowestDist = float.MaxValue;
+        Vector2 lowestFootStart = Vector2.zero;
+        Vector2 lowestGroundPoint = Vector2.zero;
+
+        foreach (var plan in limbPlans)
+        {
+            if (plan == null || plan.liveBody == null || plan.frozenBody == null) continue;
+            if (!IsGroundContactLegPlan(plan)) continue;
+            if (plan.intent != null && plan.intent.IsActiveStrike) continue;
+
+            Vector2 footStart = currentSnapshot != null && plan.bodyIndex >= 0 && plan.bodyIndex < currentSnapshot.Length
+                ? currentSnapshot[plan.bodyIndex].position
+                : (Vector2)plan.frozenBody.position;
+
+            if (!TryGetGroundPoint(footStart, out Vector2 groundPoint)) continue;
+
+            float groundCenterOffset = GetBodyGroundCenterOffset(plan.liveBody);
+            float footDistance = Mathf.Abs(footStart.y - (groundPoint.y + groundCenterOffset));
+
+            if (footDistance <= plantedFootGroundTolerance)
+                frozenRootEditPlantedLegTargets[plan.liveBody] = new Vector2(footStart.x, groundPoint.y + groundCenterOffset);
+
+            if (footDistance < lowestDist)
+            {
+                lowestDist = footDistance;
+                lowestPlan = plan;
+                lowestFootStart = footStart;
+                lowestGroundPoint = groundPoint;
+            }
+        }
+
+        if (!HasPlantedGroundContactLegTarget(frozenRootEditPlantedLegTargets) && lowestPlan != null)
+        {
+            float groundCenterOffset = GetBodyGroundCenterOffset(lowestPlan.liveBody);
+            frozenRootEditPlantedLegTargets[lowestPlan.liveBody] = new Vector2(lowestFootStart.x, lowestGroundPoint.y + groundCenterOffset);
+        }
     }
 
     /// <summary>
@@ -2348,7 +2515,7 @@ public class FreezeReplayV2 : MonoBehaviour
     {
         ClearReplantingFootJoints();
         if (plantedFootDetachThreshold <= 0f) return;
-        if (plantedFootTargets.Count == 0) return;
+        if (!HasPlantedGroundContactLegTarget()) return;
 
         // Collect feet to release + their new targets
         List<Rigidbody2D> toRelease = null;
@@ -2396,11 +2563,13 @@ public class FreezeReplayV2 : MonoBehaviour
             if (enableFootReplanting)
             {
                 CreateReplantingFootJoint(body, replantTarget);
-                Debug.Log($"[FreezeReplayV2] Replanting foot '{body.name}': pulling to new target {logDist:F2} away (threshold={plantedFootDetachThreshold:F2})");
+                if (logFootReplantingDetails)
+                    Debug.Log($"[FreezeReplayV2] Replanting foot '{body.name}': pulling to new target {logDist:F2} away (threshold={plantedFootDetachThreshold:F2})");
             }
             else
             {
-                Debug.Log($"[FreezeReplayV2] Pre-released planted foot '{body.name}': frozen target moved {logDist:F2} from planted position (threshold={plantedFootDetachThreshold:F2})");
+                if (logFootReplantingDetails)
+                    Debug.Log($"[FreezeReplayV2] Pre-released planted foot '{body.name}': frozen target moved {logDist:F2} from planted position (threshold={plantedFootDetachThreshold:F2})");
             }
         }
     }
@@ -2498,7 +2667,8 @@ public class FreezeReplayV2 : MonoBehaviour
                 planted.breakTorque = Mathf.Max(0f, plantedFootJointBreakTorque);
                 plantedFootJoints[body] = planted;
 
-                Debug.Log($"[FreezeReplayV2] Foot '{body.name}' arrived at replant target — converted to planted FixedJoint2D.");
+                if (logFootReplantingDetails)
+                    Debug.Log($"[FreezeReplayV2] Foot '{body.name}' arrived at replant target — converted to planted FixedJoint2D.");
             }
         }
     }
@@ -2632,7 +2802,7 @@ public class FreezeReplayV2 : MonoBehaviour
         if (isJumpNextSimulation) return;
 
         if (!enableAutoWalkFromHipTarget) return;
-        if (plantedFootTargets.Count == 0) return;
+        if (!HasPlantedGroundContactLegTarget()) return;
         if (currentSnapshot == null || rootBodyIndex < 0 || rootBodyIndex >= currentSnapshot.Length) return;
         if (rootBodyIndex >= frozenChildren.Length || frozenChildren[rootBodyIndex] == null) return;
 
@@ -2648,45 +2818,71 @@ public class FreezeReplayV2 : MonoBehaviour
         if (hipHeight < 0f || hipHeight > legRange) return;
 
         autoWalkDirection = Mathf.Sign(horizontalTravel);
-        autoWalkSwingFoot = ChooseAutoWalkSwingFoot(autoWalkDirection);
+        autoWalkSwingFoot = ChooseAutoWalkSwingFoot(autoWalkDirection, plantedFootTargets);
         autoWalkActive = autoWalkSwingFoot != null;
         if (autoWalkActive)
             ReleasePlantedFootJoint(autoWalkSwingFoot);
     }
 
-    private Rigidbody2D ChooseAutoWalkSwingFoot(float direction)
+    private Rigidbody2D ChooseAutoWalkSwingFoot(float direction, Dictionary<Rigidbody2D, Vector2> plantedTargets)
     {
         Rigidbody2D firstUnplanted = null;
-        Rigidbody2D swingChoice = null;
+        Rigidbody2D plantedSwingChoice = null;
         float furthestBackwardsScore = float.MinValue;
+        int plantedLegCount = 0;
 
         foreach (var plan in limbPlans)
         {
             if (plan == null || plan.liveBody == null) continue;
             if (!IsGroundContactLegPlan(plan)) continue;
 
-            if (!plantedFootTargets.ContainsKey(plan.liveBody) && firstUnplanted == null)
+            Vector2 plantedPos = Vector2.zero;
+            bool isPlantedLeg = plantedTargets != null && plantedTargets.TryGetValue(plan.liveBody, out plantedPos);
+            if (!isPlantedLeg && firstUnplanted == null)
                 firstUnplanted = plan.liveBody;
 
-            // Score based on how far backwards the foot is relative to travel direction
-            // If moving right (+1), we want the leftmost foot (min X) -> score = -X
-            // If moving left (-1), we want the rightmost foot (max X) -> score = X
-            float footX = plantedFootTargets.TryGetValue(plan.liveBody, out Vector2 plantedPos) 
-                ? plantedPos.x 
-                : plan.liveBody.position.x;
-            
+            if (!isPlantedLeg) continue;
+
+            plantedLegCount++;
+
+            // Score based on how far backwards the planted foot is relative to travel direction.
+            // If moving right (+1), we want the leftmost foot (min X) -> score = -X.
+            // If moving left (-1), we want the rightmost foot (max X) -> score = X.
+            float footX = plantedPos.x;
             float score = -footX * direction;
             if (score > furthestBackwardsScore)
             {
                 furthestBackwardsScore = score;
-                swingChoice = plan.liveBody;
+                plantedSwingChoice = plan.liveBody;
             }
         }
 
         if (firstUnplanted != null)
             return firstUnplanted;
 
-        return swingChoice;
+        // Do not consume the last grounded support foot. If only one planted leg exists,
+        // the copy should keep that foot down instead of inventing a supportless step.
+        return plantedLegCount > 1 ? plantedSwingChoice : null;
+    }
+
+    private bool HasPlantedGroundContactLegTarget()
+    {
+        return HasPlantedGroundContactLegTarget(plantedFootTargets);
+    }
+
+    private bool HasPlantedGroundContactLegTarget(Dictionary<Rigidbody2D, Vector2> plantedTargets)
+    {
+        if (plantedTargets == null || plantedTargets.Count == 0) return false;
+
+        foreach (var plan in limbPlans)
+        {
+            if (plan == null || plan.liveBody == null) continue;
+            if (!IsGroundContactLegPlan(plan)) continue;
+            if (plantedTargets.ContainsKey(plan.liveBody))
+                return true;
+        }
+
+        return false;
     }
 
     private LimbPlan FindGroundContactPlanForSide(LimbPlan sideSource)
@@ -3099,11 +3295,7 @@ public class FreezeReplayV2 : MonoBehaviour
             if (GUILayout.Button(isJumpNextSimulation ? "LAUNCH READY" : "PREP LAUNCH", GUILayout.Width(100f)))
             {
                 isJumpNextSimulation = !isJumpNextSimulation;
-                if (isJumpNextSimulation)
-                {
-                    CopyLiveToFrozen();
-                    currentSnapshot = CaptureSnapshot();
-                }
+                RequestPosePreviewRestart();
             }
             GUI.backgroundColor = Color.white;
 
@@ -3111,11 +3303,7 @@ public class FreezeReplayV2 : MonoBehaviour
             if (GUILayout.Button(forceAirborneMode ? "AIRBORNE" : "GROUNDED", GUILayout.Width(80f)))
             {
                 forceAirborneMode = !forceAirborneMode;
-                if (forceAirborneMode)
-                {
-                    CopyLiveToFrozen();
-                    currentSnapshot = CaptureSnapshot();
-                }
+                RequestPosePreviewRestart();
             }
             GUI.backgroundColor = Color.white;
         }
@@ -3279,6 +3467,7 @@ public class FreezeReplayV2 : MonoBehaviour
 
         Physics2D.SyncTransforms();
         ClampFrozenCopyAboveGround();
+        RestoreFrozenAutoLegTargetsAfterPoseStabilization();
 
         foreach (var rb in frozenCopy.GetComponentsInChildren<Rigidbody2D>(true))
         {
@@ -3360,9 +3549,9 @@ public class FreezeReplayV2 : MonoBehaviour
         }
     }
 
-    private void ClampFrozenCopyAboveGround()
+    private bool ClampFrozenCopyAboveGround()
     {
-        if (!preventFrozenCopyGroundPenetration || frozenCopy == null) return;
+        if (!preventFrozenCopyGroundPenetration || frozenCopy == null) return false;
 
         float lift = 0f;
         Collider2D[] colliders = frozenCopy.GetComponentsInChildren<Collider2D>(true);
@@ -3378,7 +3567,7 @@ public class FreezeReplayV2 : MonoBehaviour
             lift = Mathf.Max(lift, desiredBottom - bounds.min.y);
         }
 
-        if (lift <= 0.0001f) return;
+        if (lift <= 0.0001f) return false;
 
         Vector2 correction = Vector2.up * lift;
         foreach (var rb in frozenCopy.GetComponentsInChildren<Rigidbody2D>(true))
@@ -3388,6 +3577,21 @@ public class FreezeReplayV2 : MonoBehaviour
             rb.transform.position = rb.position;
         }
 
+        Physics2D.SyncTransforms();
+        return true;
+    }
+
+    private void RestoreFrozenAutoLegTargetsAfterPoseStabilization()
+    {
+        if (!frozenRootEditActive) return;
+        if (!HasPlantedGroundContactLegTarget(frozenRootEditPlantedLegTargets)) return;
+
+        Transform frozenRoot = GetFrozenRootTransform();
+        if (frozenRoot == null) return;
+
+        Vector2 rootTarget = frozenRoot.position;
+        Vector2 rootDelta = rootTarget - frozenRootEditStartRoot;
+        ApplyFrozenAutoLimbEditTargets(rootTarget, rootDelta);
         Physics2D.SyncTransforms();
     }
 
@@ -3671,8 +3875,7 @@ public class FreezeReplayV2 : MonoBehaviour
         }
 
         frozenRootEditStartRoot = frozenRoot.position;
-        if (plantedFootTargets.Count == 0)
-            CachePlantedFootTargets();
+        CacheFrozenRootEditPlantedLegTargets();
         frozenRootEditActive = true;
     }
 
@@ -3708,6 +3911,7 @@ public class FreezeReplayV2 : MonoBehaviour
     {
         frozenRootEditActive = false;
         frozenRootEditStartPoses.Clear();
+        frozenRootEditPlantedLegTargets.Clear();
     }
 
     private Transform GetFrozenRootTransform()
@@ -3735,6 +3939,11 @@ public class FreezeReplayV2 : MonoBehaviour
         // AIRBORNE: No stride or ground restrictions
         if (forceAirborneMode || isJumpNextSimulation) return targetRootPosition;
 
+        // Root dragging is kinematic, so carried non-Auto bodies would otherwise
+        // tunnel into the floor and only be corrected after the legs were planned.
+        // Clamp that floor contact up front so the generated crouch uses the real hip height.
+        targetRootPosition = ClampFrozenRootTargetAboveGroundByCarriedBodies(targetRootPosition);
+
         if (!enableAutoWalkFromHipTarget) return targetRootPosition;
 
         // NEW CONSTRAINT: Strict horizontal stride limit relative to starting position
@@ -3745,26 +3954,11 @@ public class FreezeReplayV2 : MonoBehaviour
         }
 
         // NEW CONSTRAINT: Rigidly anchor hips to planted feet so feet are never pulled from the floor
-        if (plantedFootTargets.Count > 0)
+        if (HasPlantedGroundContactLegTarget(frozenRootEditPlantedLegTargets))
         {
-            float direction = Mathf.Abs(horizontalTravel) > 0.001f ? Mathf.Sign(horizontalTravel) : autoWalkDirection;
-            Rigidbody2D swingFoot = ChooseAutoWalkSwingFoot(direction);
-
-            foreach (var kvp in plantedFootTargets)
-            {
-                // Skip the swing foot (it's stepping to a new location)
-                if (swingFoot != null && kvp.Key == swingFoot) continue;
-
-                Vector2 plantedPos = kvp.Value;
-                float dist = Vector2.Distance(targetRootPosition, plantedPos);
-                
-                // The hip physically cannot be further than the exact leg length from the planted foot
-                if (dist > walkMaxHipGroundDistance)
-                {
-                    Vector2 pullDir = (targetRootPosition - plantedPos).normalized;
-                    targetRootPosition = plantedPos + pullDir * walkMaxHipGroundDistance;
-                }
-            }
+            Rigidbody2D swingFoot = null;
+            TryGetFrozenAutoWalkEditSwingFoot(targetRootPosition, out swingFoot);
+            targetRootPosition = ProjectFrozenRootIntoPlantedLegReach(targetRootPosition, swingFoot);
         }
 
         // NEW CONSTRAINT: Strict vertical height limit relative to the actual floor
@@ -3776,6 +3970,72 @@ public class FreezeReplayV2 : MonoBehaviour
                 targetRootPosition.y = groundPoint.y + walkMaxHipGroundDistance;
             }
         }
+
+        return targetRootPosition;
+    }
+
+    private Vector2 ProjectFrozenRootIntoPlantedLegReach(Vector2 targetRootPosition, Rigidbody2D swingFoot)
+    {
+        const int projectionPasses = 3;
+        float maxReach = Mathf.Max(0.01f, walkMaxHipGroundDistance);
+
+        for (int pass = 0; pass < projectionPasses; pass++)
+        {
+            bool adjusted = false;
+
+            foreach (var kvp in frozenRootEditPlantedLegTargets)
+            {
+                if (kvp.Key == null) continue;
+                if (swingFoot != null && kvp.Key == swingFoot) continue;
+
+                Vector2 plantedPos = kvp.Value;
+                Vector2 plantedToRoot = targetRootPosition - plantedPos;
+                float dist = plantedToRoot.magnitude;
+                if (dist <= maxReach || dist <= 0.0001f) continue;
+
+                targetRootPosition = plantedPos + plantedToRoot / dist * maxReach;
+                adjusted = true;
+            }
+
+            if (!adjusted)
+                break;
+        }
+
+        return targetRootPosition;
+    }
+
+    private Vector2 ClampFrozenRootTargetAboveGroundByCarriedBodies(Vector2 targetRootPosition)
+    {
+        Vector2 rootDelta = targetRootPosition - frozenRootEditStartRoot;
+        float requiredLift = 0f;
+
+        foreach (var kvp in frozenRootEditStartPoses)
+        {
+            Rigidbody2D rb = kvp.Key;
+            if (rb == null || IsFrozenAutoLimbBody(rb)) continue;
+
+            FrozenRootEditPose startPose = kvp.Value;
+            Collider2D[] colliders = rb.GetComponents<Collider2D>();
+            foreach (var col in colliders)
+            {
+                if (col == null || !col.enabled || col.isTrigger) continue;
+
+                Bounds currentBounds = col.bounds;
+                float minYOffset = currentBounds.min.y - rb.position.y;
+                float centerXOffset = currentBounds.center.x - rb.position.x;
+                float candidateMinY = startPose.position.y + rootDelta.y + minYOffset;
+                float candidateCenterX = startPose.position.x + rootDelta.x + centerXOffset;
+                Vector2 probe = new Vector2(candidateCenterX, candidateMinY);
+
+                if (!TryGetGroundPoint(probe, out Vector2 groundPoint)) continue;
+
+                float desiredBottom = groundPoint.y + Mathf.Max(0f, frozenCopyGroundClearance);
+                requiredLift = Mathf.Max(requiredLift, desiredBottom - candidateMinY);
+            }
+        }
+
+        if (requiredLift > 0.0001f)
+            targetRootPosition.y += requiredLift;
 
         return targetRootPosition;
     }
@@ -3807,7 +4067,7 @@ public class FreezeReplayV2 : MonoBehaviour
         swingFoot = null;
         if (isJumpNextSimulation) return false;
         if (!enableAutoWalkFromHipTarget) return false;
-        if (plantedFootTargets.Count == 0) return false;
+        if (!HasPlantedGroundContactLegTarget(frozenRootEditPlantedLegTargets)) return false;
         if (currentSnapshot == null || rootBodyIndex < 0 || rootBodyIndex >= currentSnapshot.Length) return false;
 
         Vector2 startRoot = currentSnapshot[rootBodyIndex].position;
@@ -3823,7 +4083,7 @@ public class FreezeReplayV2 : MonoBehaviour
         float direction = Mathf.Abs(horizontalTravel) > 0.001f ? Mathf.Sign(horizontalTravel) : autoWalkDirection;
         if (Mathf.Abs(direction) < 0.001f) direction = 1f;
 
-        swingFoot = ChooseAutoWalkSwingFoot(direction);
+        swingFoot = ChooseAutoWalkSwingFoot(direction, frozenRootEditPlantedLegTargets);
         return swingFoot != null;
     }
 
@@ -3949,6 +4209,49 @@ public class FreezeReplayV2 : MonoBehaviour
             if (plan.frozenBody == body && IsAutoLimbPlan(plan)) return true;
         }
         return false;
+    }
+
+    private Dictionary<Rigidbody2D, FrozenRootEditPose> CaptureFrozenCopyPose()
+    {
+        Dictionary<Rigidbody2D, FrozenRootEditPose> poses = new Dictionary<Rigidbody2D, FrozenRootEditPose>();
+        if (frozenCopy == null) return poses;
+
+        foreach (var rb in frozenCopy.GetComponentsInChildren<Rigidbody2D>(true))
+        {
+            if (rb == null) continue;
+            poses[rb] = new FrozenRootEditPose
+            {
+                position = rb.position,
+                rotation = rb.rotation
+            };
+        }
+
+        return poses;
+    }
+
+    private void RestoreFrozenCopyPose(Dictionary<Rigidbody2D, FrozenRootEditPose> poses)
+    {
+        if (poses == null || poses.Count == 0) return;
+
+        bool changed = false;
+        foreach (var kvp in poses)
+        {
+            Rigidbody2D rb = kvp.Key;
+            if (rb == null) continue;
+
+            FrozenRootEditPose pose = kvp.Value;
+            bool moved = (rb.position - pose.position).sqrMagnitude > 0.0000001f;
+            bool rotated = Mathf.Abs(Mathf.DeltaAngle(rb.rotation, pose.rotation)) > 0.001f;
+            if (!moved && !rotated) continue;
+
+            SetFrozenBodyPose(rb, pose.position, pose.rotation);
+            rb.linearVelocity = Vector2.zero;
+            rb.angularVelocity = 0f;
+            changed = true;
+        }
+
+        if (changed)
+            Physics2D.SyncTransforms();
     }
 
     private void SetFrozenBodyPose(Rigidbody2D rb, Vector2 position, float rotation)
