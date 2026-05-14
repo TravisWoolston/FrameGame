@@ -1,4 +1,4 @@
-# Frame Game AI Handoff
+﻿# Frame Game AI Handoff
 
 This document is for future language-model assistants working on this Unity project. It summarizes the current direction, the important scripts, and the fragile areas that should be understood before changing code.
 
@@ -19,11 +19,11 @@ The current direction favors:
 
 - marker-authored fighters that build their physics rig at runtime
 - **angle-driven movement** via PoseDriver hinge motors as the primary control method
-- minimal force — only the root/hips body gets translational force to maintain structure
+- minimal force -- only the root/hips body gets translational force to maintain structure
 - planted feet using temporary FixedJoint2D for ground contact stability
 - **Auto Limbs** used primarily for walking, standing, and hand-grounding during posing
 - upper-body limbs manually poseable as Basic/Block or Strike (unless in Auto mode)
-- **chain-isolated dragging** — moving a hand only affects its arm chain; moving a foot only affects its leg chain
+- **chain-isolated dragging** -- moving a hand only affects its arm chain; moving a foot only affects its leg chain
 
 ## Current Architecture
 
@@ -57,7 +57,7 @@ Important methods:
 - `BeginLimbPlansForSimulation()`: begins limb intents, caches planted feet, creates planted-foot joints
 - `ApplyAdaptiveLegAssist()`: decides whether Auto-walk is active
 - `ApplyAutoWalkLegAssist()`: current Auto-walk driver
-- `GetAutoMidJointTarget()`: 2-bone IK for knee/elbow placement — uses cross-product from live bodies for bend direction
+- `GetAutoMidJointTarget()`: 2-bone IK for knee/elbow placement -- uses cross-product from live bodies for bend direction
 - `GetAutoLimbEndTarget()`: calculates world/relative target for feet and hands based on stride and planting state
 - `StabilizeFrozenCopyPose()`: clamps frozen copy root, joint limits, joint anchors, and floor penetration
 - `ApplyCurrentLowForceDefaults()`: context-menu/reset button for the current intended tuning
@@ -89,9 +89,9 @@ Runtime telemetry and auto-tuning system. Attach to the same GameObject as FRV2.
 - F8: write report; F9: generate optimized preset
 
 Heuristic rules:
-- High position error → suggest increasing poseAssistSpring / maxPoseAssistForce
-- Oscillation → suggest increasing poseKd / poseAssistDamping
-- Force saturation → suggest increasing force caps
+- High position error -> suggest increasing poseAssistSpring / maxPoseAssistForce
+- Oscillation -> suggest increasing poseKd / poseAssistDamping
+- Force saturation -> suggest increasing force caps
 - Damping-to-spring ratio checks
 - Walk-specific leg error analysis
 
@@ -131,7 +131,7 @@ Current behavior:
 - root/hips drag is handled directly through `FreezeReplayV2.BeginFrozenRootPoseEdit`, `UpdateFrozenRootPoseEdit`, and `EndFrozenRootPoseEdit`
 - non-root limb drag temporarily switches the frozen copy to `Dynamic`, creates a `TargetJoint2D`, then returns the frozen copy to `Kinematic`
 - after release, it calls `FreezeReplayV2.StabilizeFrozenCopyPose()` and requests preview restart
-- **chain-isolated dragging**: when dragging, `BuildLimbChain()` identifies all bodies in the same kinematic chain (e.g., Hand → Lower Arm → Arm), then anchors all bodies NOT in that chain with `TargetJoint2D` anchors, ensuring only the dragged limb chain moves
+- **chain-isolated dragging**: when dragging, `BuildLimbChain()` identifies all bodies in the same kinematic chain (e.g., Hand -> Lower Arm -> Arm), then anchors all bodies NOT in that chain with `TargetJoint2D` anchors, ensuring only the dragged limb chain moves
 
 Chain isolation logic:
 - Walks DOWN from dragged body to find HingeJoint2D children
@@ -157,7 +157,7 @@ A PD motor controller on live hinge-jointed limbs. It drives a live `HingeJoint2
 
 Current relevance:
 
-- **Primary control method** in the angle-driven preset — all jointed limbs are driven by PoseDriver hinge motors
+- **Primary control method** in the angle-driven preset -- all jointed limbs are driven by PoseDriver hinge motors
 - Auto limbs use PoseDriver when `usePoseDriversForAutoLimbs = true`
 - Auto-walk also has its own joint-motor path controlled by `useJointMotorsForAutoWalk`
 - PoseDriver settings on FRV2 (poseKp, poseKd, etc.) are global and override the per-PoseDriver values during `ApplyPoseDriverSettings()`
@@ -281,6 +281,63 @@ If the frozen copy goes through the floor:
 - check `frozenCopyGroundClearance`
 - check `TryGetGroundPoint()` is not hitting fighter colliders instead of ground
 
+## Ideal Simulation Behavior And Current Limitations
+
+This section captures the main unresolved design/engineering issues from recent tuning. Treat these as product goals, not settled implementation facts.
+
+### Frozen Copy Manipulation
+
+Ideal behavior:
+
+- The frozen copy is the sole authored target pose between committed captures.
+- Preview simulation is a read-only consumer of that pose. It must never push preview/live results back into the frozen copy.
+- `currentSnapshot` contains all information needed to restart preview/commit. It should not change until a real committed capture finishes.
+- Dragging hips/root should move the upper body predictably while Auto limbs solve to physically plausible support/contact positions.
+- Dragging a limb should affect its chain and nearby logical dependencies, but should not pull the whole fighter off the floor.
+- Root/hip lowering should clamp to the closest valid pose instead of fighting the user or lifting planted feet.
+
+Known limitations:
+
+- `StabilizeFrozenCopyPose()` is still a fragile reconciliation pass. It can move bodies after IK has authored them, so Auto leg targets may need to be re-applied after stabilization.
+- Ground clamping can overcorrect if the ground probe hits the wrong surface or if non-Auto carried bodies collide with the floor before the leg solver has settled.
+- Preview-loop restarts previously influenced the frozen copy. This must remain isolated; if the copy moves when preview starts, treat it as a regression.
+- Frozen-copy manipulation is currently a blend of kinematic writes, joint-anchor reconciliation, ground clamping, and IK. These systems can disagree about which body is authoritative.
+
+### Leg Manipulation, Crouching, And Walking
+
+Ideal behavior:
+
+- If at least one foot is planted at snapshot start, lowering or moving the hips should preserve at least one planted support foot on the floor.
+- The planted support foot should be authoritative during frozen-copy editing. It should not drift upward or sideways just because the hip is lowered.
+- Only one leg should become the active stride/swing leg at a time.
+- The stride foot should keep a natural neutral-side bias for small hip edits, then reach confidently in the travel direction for larger committed moves.
+- Low hip/crouch edits should prioritize valid vertical hip placement and grounded support over perfect horizontal stride distance.
+- Legs should generally bend away from the floor. However, support legs should not be aggressively flipped by knee-clearance logic if doing so destabilizes their planted contact.
+
+Known limitations:
+
+- Auto-walk/crouch is still the most fragile system. Small changes to swing-foot target math can quickly trade confident strides for crossed legs, or natural neutral stance for timid movement.
+- The current knee bend direction uses live-body cross products plus additional floor-aware correction. This can be stale or overaggressive, especially for planted support legs.
+- The floor-aware bend correction should be conservative: best suited for swing or unsupported legs, less suitable for planted legs.
+- `ProjectFrozenRootIntoPlantedLegReach()` keeps hips within reach of planted support, but it is not a full IK constraint solver. It may need better projection/scoring if hips are low and horizontally offset.
+- Foot placement scoring was explored and removed/restored several times. Avoid reintroducing a complex scorer unless it has a clear, inspectable rule for preserving planted support and natural bends.
+
+### Jumping And Airborne Behavior
+
+Ideal behavior:
+
+- Grounded posing and airborne/jump posing should feel like different modes.
+- In grounded mode, planted feet provide stability and constrain hip/root movement.
+- In `forceAirborneMode` or `isJumpNextSimulation`, root movement should skip grounded stride and ground constraints so launch poses can be exaggerated.
+- Toggling airborne/launch state must not copy live transforms to the frozen copy, must not overwrite `currentSnapshot`, and must not silently reset the authored pose.
+- A committed jump should use the authored frozen copy as intent, then the live body should simulate ballistically with gravity and angular control.
+
+Known limitations:
+
+- Jump trigger behavior currently depends on leg extension and planted-leg detection. If planted feet are unstable, jump detection will also be unstable.
+- Airborne tethers and grounded tethers have different goals. Airborne should generally tether limb ends relative to the core; grounded behavior is more editor/preset dependent.
+- Launch/airborne mode is intentionally less physically constrained while posing, but the resulting simulation still needs enough joint/motor authority to look intentional.
+
 ## Auto-Walk and Auto-Leg IK
 
 Auto-walk is experimental and is one of the more fragile current systems.
@@ -306,7 +363,7 @@ Auto-walk is experimental and is one of the more fragile current systems.
 ### Limb IK (GetAutoMidJointTarget / GetAutoLimbEndTarget)
 
 Generalized 2-bone IK for both legs and arms:
-- **Mid-joint placement**: IK height = `√(halfLimb² - halfDist²)` applied perpendicular to the root→end line.
+- **Mid-joint placement**: IK height = `âˆš(halfLimbÂ² - halfDistÂ²)` applied perpendicular to the root->end line.
 - **Bend Direction**: Dynamically determined by `GetLimbBendDirection()` using the cross-product of the live limb's current hip-knee-foot or shoulder-elbow-hand triangle. This preserves anatomical bend (e.g., knees-out, elbows-out).
 - **Stride Control**: Foot targets track relative to `rootTarget.x` with a `walkMaxStrideDistance` limit. The single swing foot keeps a neutral-side bias for smaller edits, then reaches farther in the travel direction as the hip move becomes more committed; available reach still shrinks naturally when the hips are low.
 - **Floor-aware knee bend**: swing or otherwise unsupported leg IK compares the preferred knee bend with its mirrored alternative and keeps the candidate with better ground clearance when the original bend would fold toward the floor. Planted support legs keep their existing bend direction so contact posing stays stable.
@@ -337,12 +394,12 @@ If calves rotate around knees while thighs do not move:
 
 ### Intent-Based Foot Detachment
 
-At the start of each simulation/preview, `PreReleasePlantedFeetByFrozenTarget()` compares each planted foot's anchor position (from `CachePlantedFootTargets`) to the frozen copy's current foot position. If the frozen foot has moved beyond `plantedFootDetachThreshold`, the foot is removed from `plantedFootTargets` before `CreatePlantedFootJoints()` runs — so no FixedJoint2D is created for it, and the foot is free to chase its new target.
+At the start of each simulation/preview, `PreReleasePlantedFeetByFrozenTarget()` compares each planted foot's anchor position (from `CachePlantedFootTargets`) to the frozen copy's current foot position. If the frozen foot has moved beyond `plantedFootDetachThreshold`, the foot is removed from `plantedFootTargets` before `CreatePlantedFootJoints()` runs -- so no FixedJoint2D is created for it, and the foot is free to chase its new target.
 
 - **`plantedFootDetachThreshold`** (default: 0.4): distance threshold for intent-based release. Set to 0 to disable.
 - Called from `BeginLimbPlansForSimulation()` between `CachePlantedFootTargets()` and `CreatePlantedFootJoints()`
 - Works for both preview and committed simulation paths
-- Logged to console when a foot is pre-released
+- Logged only when `logFootReplantingDetails` is enabled
 - Included in the preset system (`FRV2Preset`)
 
 ### Airborne Physics & Posing
@@ -376,20 +433,20 @@ Potential fixes:
 Philosophy: **angle-primary with minimal root support**.
 
 Key settings:
-- `ignoreJointLimits: true` — joint limits off for now
-- `poseKp: 55, poseKd: 14` — moderate PD gains
-- `enablePhysicsPoseAssist: true` but `poseAssistOnlyRootAndUnjointedBodies: true` — **only root/hips get translational force**; all jointed limbs are purely motor-driven
-- `usePoseDriversForAutoLegs: true` — legs use PoseDriver motors
-- `useJointMotorsForAutoWalk: true` — walking via joint motors
-- All walk/leg force values zeroed — no force-driving of limbs
-- `enablePlantedFootStability: true, usePlantedFootJoints: true` — FixedJoint2D for planted feet
+- `ignoreJointLimits: true` -- joint limits off for now
+- `poseKp: 55, poseKd: 14` -- moderate PD gains
+- `enablePhysicsPoseAssist: true` but `poseAssistOnlyRootAndUnjointedBodies: true` -- **only root/hips get translational force**; all jointed limbs are purely motor-driven
+- `usePoseDriversForAutoLegs: true` -- legs use PoseDriver motors
+- `useJointMotorsForAutoWalk: true` -- walking via joint motors
+- All walk/leg force values zeroed -- no force-driving of limbs
+- `enablePlantedFootStability: true, usePlantedFootJoints: true` -- FixedJoint2D for planted feet
 - Planted foot spring fallback disabled
 
 ### How to use presets
 
 1. Play a few turns with FRV2Diagnostics attached
 2. Press F8 for report + auto-generated optimized preset, or F9 for preset only
-3. Open Presets section in FRV2 inspector → select from dropdown → Load
+3. Open Presets section in FRV2 inspector -> select from dropdown -> Load
 4. Set `autoLoadPresetName` to auto-apply on Start
 
 ## Component Relationships (Same GameObject)
@@ -398,9 +455,9 @@ All three of these live on the **same controller GameObject**:
 
 | Component | Purpose | Settings overlap? |
 |---|---|---|
-| `FreezeReplayV2` | Turn loop, simulation, assist systems, preset loading | Master — its poseKp/Kd/maxSpeed override all PoseDrivers |
-| `SmartPoser` | Frozen copy drag-to-pose UI | **No overlap** — dragForce/frequency are for the TargetJoint2D drag spring, not simulation |
-| `PoseDriverSetup` | Utility for wiring PoseDrivers | **Mostly unused** — FRV2.WirePoseDrivers() handles this directly |
+| `FreezeReplayV2` | Turn loop, simulation, assist systems, preset loading | Master -- its poseKp/Kd/maxSpeed override all PoseDrivers |
+| `SmartPoser` | Frozen copy drag-to-pose UI | **No overlap** -- dragForce/frequency are for the TargetJoint2D drag spring, not simulation |
+| `PoseDriverSetup` | Utility for wiring PoseDrivers | **Mostly unused** -- FRV2.WirePoseDrivers() handles this directly |
 
 PoseDriver instances live on **each limb body of the live fighter**, not on the controller. FRV2 creates/wires them during setup.
 
@@ -410,7 +467,7 @@ The project has moved toward angle-driven control with minimal force.
 
 Current defaults (angle-driven preset):
 
-- `poseAssistOnlyRootAndUnjointedBodies = true` — force only on root
+- `poseAssistOnlyRootAndUnjointedBodies = true` -- force only on root
 - `useForceLegAssistWhenNotWalking = false`
 - `usePlantedFootJoints = true`
 - `usePlantedFootSpringFallback = false`
@@ -425,7 +482,7 @@ If feet stick to the floor:
 - check `ReleasePlantedFootJoint()`
 - check `plantedFootGroundTolerance`
 - check whether the actual foot body is named `Foot` / `Foot 2`; if no foot exists, calves are treated as contact legs
-- **check if frozen foot has moved** — may need smarter detachment logic (see Planted Foot section)
+- **check if frozen foot has moved** -- may need smarter detachment logic (see Planted Foot section)
 
 ## Combat / Limb UI
 
@@ -464,16 +521,39 @@ This project contains many older experimental scripts, including:
 
 In general, prefer improving the current `FreezeReplayV2` + marker rig path over reviving older motor scripts.
 
-## Current Known Issues
+## Design Priorities (User Direction -- May 2026)
 
-1. **Spine-to-hips weakness**: The spine joint's motor is too weak in the angle-driven preset, causing the torso to slouch. Needs per-joint tuning or increased motor torque.
-2. ~~**Planted foot detachment**~~: **Resolved** — intent-based pre-release via `PreReleasePlantedFeetByFrozenTarget()` and `plantedFootDetachThreshold`.
-3. **ImpactDamage cooldown uses Time.time**: Minor preview-vs-commit divergence from wall-clock based cooldowns.
-4. **Auto-walk fragility**: Mixes generated targets, hinge motors, and limited foot forces. Still experimental.
-5. **Kinematic frozen-copy stabilization**: Custom logic that can introduce unexpected whole-body lifts if ground detection is wrong.
-6. **Custom inspector hides many fields**: Check advanced foldouts or source before assuming a setting is gone.
-7. **No .sln or .csproj** currently visible from Assets/Scripts, so command-line compilation has not been available.
-8. **PoseDriverSetup.cs on controller**: May be redundant — FRV2.WirePoseDrivers() handles PoseDriver creation. Verify it's not conflicting.
+### Vision
+
+The game should feel like a mix of **Your Only Move Is Hustle** and **Toribash**, but unique. An anime-like fighting game where the fighter looks as alive as possible while having fun with the physics. The end result: a punch lands, the victim's body tumbles along the floor -- that Dragon Ball Z appeal.
+
+### User Answers To Architecture Questions
+
+1. **Single or dual fighter?** Single fighter is the primary focus right now. Getting the frozen copy -> simulated fighter control to feel intuitive is the top priority. Would like an option to test two fighters eventually (for hit response testing), and controlling two fighters within a single FRV2 instance would be ideal. But not until single-fighter control is smooth.
+
+2. **Strikes aren't visually faster.** Strike logic applies a velocity multiplier and forces, but the visual result doesn't show a faster strike. The PoseDriver joint-motor system (which provides the most concise, jitter-free motion) likely overrides or absorbs the strike speed boost before it becomes visible. This is a critical issue -- strikes MUST look distinct from regular movement.
+
+3. **Preset philosophy.** `tether_jumping` is the current favorite. The auto-leg logic works decently for upright horizontal movement. Problems appear when hips are lowered: legs get unnaturally positioned, or hips refuse to update to positions that should be reachable (even if the system can only get close while honoring 1-planted-foot). New presets are welcome when new mechanics are added -- there's no proven approach since this game design is novel. An "alive_fighter" preset is welcome.
+
+4. **Walking and jumping are the current focus.** Single-player walking and jumping need to work well. The fighter should maintain angle relations and body form while airborne (local-space coherence). Jump behavior needs work: physics should handle airborne trajectory, but the player still needs enough limb control for karate-kicks and similar poses. **Airborne thigh update failure is a known critical bug**: thighs fail to update because they're connected to a non-stationary base (hips falling under gravity), and the IK/motor system doesn't adapt.
+
+5. **Replay export is far away.** Not a current concern.
+
+### Current Development Focus (Ordered Priority)
+
+1. **Smooth single-fighter control** -- the pose -> preview -> commit loop must feel intuitive
+2. **Functional walking** -- upright is okay, crouching and lowered hips need work
+3. **Functional jumping and airborne control** -- physics trajectory with limb authority
+4. **Strike visual distinctness** -- strikes must look faster and more forceful than basic movement
+5. **Dual-fighter option** -- for testing hit response (later)
+6. **Hit reactions and ragdoll** -- dependent on #5
+7. **Replay cinematics** -- later
+
+### Critical Active Issues
+
+10. **Strikes are not visually faster than basic movement**: `PoseDriver` motors control joint speed via PD gains and `maxMotorSpeed`. Strike `runtimeSpeedMultiplier` increases the PD output, but since the frozen target pose is the same as a basic move, the motors are chasing the same angle. The multiplier makes the motor *stiffer*, not *faster through a larger arc*. For strikes to look fast, the strike limb needs to either (a) temporarily disable/weaken its PoseDriver so external forces dominate, or (b) be driven toward an intermediate "wind-up then snap" pose sequence, or (c) have its PoseDriver chase a dynamically interpolated target that leads the frozen pose.
+
+11. **Airborne thigh update failure**: When the fighter is airborne, the hips (root body) fall under gravity. Thigh `HingeJoint2D` components are connected to the hips. `PoseDriver` drives `jointAngle`, which is the angle relative to the `connectedBody` (hips). Since the hips are rotating during freefall, `jointAngle` is measured in a rotating frame. If the hips rotate 30 degrees, a thigh at `jointAngle = 0 degrees` also rotates 30 degrees in world space -- but the frozen copy's hips didn't rotate, so the frozen `jointAngle` is stale. Additionally, Auto-leg IK generates world-space targets and converts them to rotations, but the world-to-joint-angle conversion doesn't account for the live root's current rotation during freefall. The airborne angular spring multiplier on the root tries to keep hips upright, but if it loses that battle, all downstream joints drift.
 
 ## Quick Debug Checklist
 
@@ -490,6 +570,8 @@ When another model receives a bug report, start with these checks:
 9. Are PoseDriver settings relevant to this limb, or is Auto-walk bypassing normal PoseDrivers?
 10. **Which preset is loaded?** Check `autoLoadPresetName` and compare current inspector values to the preset file.
 11. **Is FRV2Diagnostics attached?** Check its reports for tracking error data.
+12. **Is the fighter airborne?** Check if thigh `jointAngle` targets are stale relative to live root rotation.
+13. **Is a strike visually distinct?** Check if `runtimeSpeedMultiplier` is actually creating visible speed difference.
 
 ## Most Relevant Files
 

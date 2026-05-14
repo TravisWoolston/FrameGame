@@ -128,12 +128,16 @@ PrefabInstance:
     m_TransformParent: {fileID: 0}
     m_Modifications:
     - target: {fileID: 840265779939315729, guid: e28aaea04614c8b4aa96f11bf1018407, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 25.163
+      objectReference: {fileID: 0}
+    - target: {fileID: 840265779939315729, guid: e28aaea04614c8b4aa96f11bf1018407, type: 3}
       propertyPath: m_LocalPosition.x
       value: 3.97
       objectReference: {fileID: 0}
     - target: {fileID: 840265779939315729, guid: e28aaea04614c8b4aa96f11bf1018407, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -36.88
+      value: -48.7
       objectReference: {fileID: 0}
     - target: {fileID: 840265779939315729, guid: e28aaea04614c8b4aa96f11bf1018407, type: 3}
       propertyPath: m_LocalPosition.z
@@ -1300,11 +1304,12 @@ MonoBehaviour:
   spawnGroundProbeHeight: 12
   spawnGroundProbeDistance: 40
   spawnGroundClearance: 0.03
+  centerMainCameraOnSnapshotStart: 1
   poseKp: 180
   poseKd: 35
   poseMaxSpeed: 800
   ignoreJointLimits: 1
-  enablePhysicsPoseAssist: 0
+  enablePhysicsPoseAssist: 1
   poseAssistOnlyRootAndUnjointedBodies: 1
   enablePoseTethers: 1
   poseTetherMaxDistance: 0.05
@@ -1353,12 +1358,13 @@ MonoBehaviour:
   replantFootDamping: 0.9
   replantFootMaxForce: 800
   replantFootArrivalDistance: 0.15
-  jumpForceMultiplier: 350
+  logFootReplantingDetails: 0
+  jumpForceMultiplier: 50
   jumpExtensionThreshold: 0.9
   forceAirborneMode: 0
   isJumpNextSimulation: 0
   jumpTriggerArmed: 0
-  enablePosePreviewLoop: 1
+  enablePosePreviewLoop: 0
   disableDamageDuringPreview: 1
   previewLoopDuration: 1
   enableAutoWalkFromHipTarget: 1
@@ -1543,6 +1549,14 @@ PrefabInstance:
     - target: {fileID: 4890524425609136935, guid: f2c3519dcd1a96a418c2cdfcec23040c, type: 3}
       propertyPath: m_Name
       value: Main Camera (1)
+      objectReference: {fileID: 0}
+    - target: {fileID: 8617839172615544981, guid: f2c3519dcd1a96a418c2cdfcec23040c, type: 3}
+      propertyPath: m_Enabled
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8617839172615544981, guid: f2c3519dcd1a96a418c2cdfcec23040c, type: 3}
+      propertyPath: holdSnapshotCenter
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8998557635205397693, guid: f2c3519dcd1a96a418c2cdfcec23040c, type: 3}
       propertyPath: m_LocalPosition.x

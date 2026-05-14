@@ -4342,7 +4342,7 @@ public class FreezeReplayV2 : MonoBehaviour
 
     [Header("=== Presets ===")]
     [Tooltip("If set, this preset is loaded on Start. Leave empty to use inspector values.")]
-    public string autoLoadPresetName = "";
+    public string autoLoadPresetName = "tether_jumping";
 
     /// <summary>
     /// Save all current tuning values to a named preset JSON file.
