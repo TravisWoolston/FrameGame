@@ -1,4 +1,4 @@
-﻿# Frame Game AI Handoff
+# Frame Game AI Handoff
 
 This document is for future language-model assistants working on this Unity project. It summarizes the current direction, the important scripts, and the fragile areas that should be understood before changing code.
 
@@ -405,9 +405,12 @@ At the start of each simulation/preview, `PreReleasePlantedFeetByFrozenTarget()`
 ### Airborne Physics & Posing
 
 Airborne behavior differs significantly from grounded posing:
-- **Unrestricted Posing**: When `forceAirborneMode` or `isJumpNextSimulation` is active, the frozen copy's root skips all stride and ground constraints.
+- **LAUNCH READY Posing**: When `isJumpNextSimulation` is active, the frozen copy stays grounded with at least one foot planted. The user authors the launch direction by moving the hips -- the vertical height limit is relaxed to `walkMaxHipGroundDistance * 1.15` to allow full leg extension. The live fighter preview actually fires the jump trigger to show the launch trajectory.
+- **Already Airborne**: When `forceAirborneMode` is active (after a committed launch), the frozen copy root skips all stride and ground constraints.
 - **Local-Space Tethers**: Limbs are leashed relative to the core (`connectedBody = rootRb`) using `DistanceJoint2D`. This allows the character to fall naturally under gravity while limbs rigidly track their relative pose offsets.
 - **Core Rotation**: Root rotation is driven by a boosted `airborneAngularSpringMultiplier` (default: 10x) for "rigid" angular control without position-tethering the hips to world-space.
+- **Root Rotation Compensation**: `PoseDriver.airborneRootRotationOffset` compensates for the rotation delta between live and frozen roots. FRV2 computes `DeltaAngle(frozenRoot.rotation, liveRoot.rotation)` and injects it into PoseDrivers whose joint is connected to the root body. This makes thighs and spine maintain world-space orientation instead of drifting with rotating hips.
+- **Coherent Launch Impulse**: `CheckJumpTrigger()` applies impulse to ALL bodies (root at 100%, limbs at 70%) for body coherence during launch. Impulse scales by leg extension ratio for predictable jump height.
 - **Mode Toggle Isolation**: Toggling Airborne/Launch Ready restarts preview from the existing authored copy and captured snapshot. It does not call `CopyLiveToFrozen()` and does not replace `currentSnapshot`.
 
 Feet can still break free via FixedJoint2D break force/torque during simulation if needed.

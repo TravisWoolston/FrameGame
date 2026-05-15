@@ -191,8 +191,8 @@ public class FreezeReplayV2 : MonoBehaviour
     public bool logFootReplantingDetails = false;
 
     [Header("=== Jumping & Airborne ===")]
-    [Tooltip("Force multiplier applied when legs hit max extension to launch the fighter.")]
-    public float jumpForceMultiplier = 300f;
+    [Tooltip("Velocity continuation factor at jump trigger. 1.0 = maintain exact velocity, 2.0 = double it. The fighter builds upward speed during leg extension; this multiplies that speed at launch.")]
+    public float jumpForceMultiplier = 1.5f;
     [Tooltip("Fraction of max leg reach needed to trigger jump impulse.")]
     public float jumpExtensionThreshold = 0.9f;
     [HideInInspector] public bool forceAirborneMode = false;
@@ -491,13 +491,20 @@ public class FreezeReplayV2 : MonoBehaviour
             || (currentPhase == TurnPhase.Posing && posePreviewLoopRunning);
         if (!shouldDrivePhysics) return;
 
-        bool isPurePhysicsMode = forceAirborneMode;
-        
-        // If we are waiting for the jump trigger to fire, we need PoseAssist active to pull hips up and extend legs!
-        if (jumpTriggerArmed && !hasJumpTriggered)
-        {
-            isPurePhysicsMode = false;
-        }
+        // Jump has two phases:
+        // Phase 1 (pre-trigger): legs extend upward, all assist systems active.
+        //   The fighter naturally builds velocity as motors/tethers drive hips up.
+        // Phase 2 (post-trigger): foot joints released, fighter is airborne.
+        //   Only PoseDrivers (with root rotation compensation) keep body form.
+        bool isPostJumpAirborne = forceAirborneMode || (jumpTriggerArmed && hasJumpTriggered);
+        bool isPurePhysicsMode = isPostJumpAirborne;
+
+        // Airborne root rotation compensation:
+        // When the live root (hips) rotates under gravity but the frozen copy's root
+        // stays fixed, PoseDriver jointAngle targets become stale because jointAngle
+        // is measured relative to the connectedBody. We compute the rotation delta
+        // and inject it into each PoseDriver so their targets compensate.
+        UpdateAirborneRootRotationOffset(isPostJumpAirborne);
 
         if (!isPurePhysicsMode)
         {
@@ -506,6 +513,12 @@ public class FreezeReplayV2 : MonoBehaviour
             ApplyPoseTethers();
             ApplyAdaptiveLegAssist();
             ApplyAutoLegGeneratedTargetAssist();
+
+            // During jump pre-trigger phase, always drive the root upward toward
+            // the frozen copy regardless of the global enablePhysicsPoseAssist toggle.
+            // This builds the upward velocity that CheckJumpTrigger() will continue.
+            if (jumpTriggerArmed && !hasJumpTriggered)
+                ApplyJumpExtensionAssist();
         }
         else
         {
@@ -514,7 +527,7 @@ public class FreezeReplayV2 : MonoBehaviour
             ClearPoseTethers();
         }
 
-        if (isCommittedSimulation && jumpTriggerArmed && !hasJumpTriggered)
+        if (jumpTriggerArmed && !hasJumpTriggered)
         {
             CheckJumpTrigger();
         }
@@ -644,7 +657,10 @@ public class FreezeReplayV2 : MonoBehaviour
         {
             isJumpNextSimulation = false;
             jumpTriggerArmed = true;
-            forceAirborneMode = true;
+            // Do NOT set forceAirborneMode here! The fighter needs pose assist
+            // and planted feet active during the leg extension phase (pre-trigger).
+            // forceAirborneMode is set by CheckJumpTrigger() when legs reach
+            // full extension and the fighter actually leaves the ground.
         }
 
         // Start simulation — unfreeze live bodies
@@ -704,6 +720,18 @@ public class FreezeReplayV2 : MonoBehaviour
         BeginLimbPlansForSimulation();
         UnfreezeLiveBodies();
         RestoreFrozenCopyPose(authoredFrozenPose);
+
+        // During LAUNCH READY preview, arm the jump trigger so the preview
+        // shows the actual launch trajectory (legs extend → trigger → arc).
+        // Also reset forceAirborneMode so the leg extension phase starts fresh
+        // with all ground assists active (it gets set back to true by CheckJumpTrigger).
+        if (isJumpNextSimulation)
+        {
+            jumpTriggerArmed = true;
+            hasJumpTriggered = false;
+            forceAirborneMode = false;
+        }
+
         posePreviewLoopRunning = true;
         posePreviewRestartRequested = false;
     }
@@ -735,6 +763,16 @@ public class FreezeReplayV2 : MonoBehaviour
         posePreviewLoopRunning = false;
         posePreviewFixedStepsRemaining = 0;
         posePreviewRestartRequested = false;
+
+        // If we were previewing a LAUNCH READY jump, reset forceAirborneMode.
+        // The preview's CheckJumpTrigger may have set it to true; we must clear it
+        // so the committed simulation starts with the leg extension phase active.
+        if (isJumpNextSimulation)
+        {
+            forceAirborneMode = false;
+            jumpTriggerArmed = false;
+            hasJumpTriggered = false;
+        }
 
         if (restoreSnapshot && currentSnapshot != null)
             RestoreSnapshot(currentSnapshot);
@@ -1759,6 +1797,34 @@ public class FreezeReplayV2 : MonoBehaviour
                 - rb.angularVelocity * poseAssistAngularDamping;
             rb.AddTorque(Mathf.Clamp(torque, -maxPoseAssistTorque * angularMult, maxPoseAssistTorque * angularMult), ForceMode2D.Force);
         }
+    }
+
+    /// <summary>
+    /// Drives the root body toward the frozen copy's position during the jump pre-trigger
+    /// phase. This is always active when jumpTriggerArmed, even if enablePhysicsPoseAssist
+    /// is off — the upward velocity built here is what CheckJumpTrigger() amplifies.
+    /// </summary>
+    private void ApplyJumpExtensionAssist()
+    {
+        if (rootBodyIndex < 0 || rootBodyIndex >= trackedBodies.Count) return;
+        if (frozenChildren == null || rootBodyIndex >= frozenChildren.Length) return;
+
+        Rigidbody2D liveRoot = trackedBodies[rootBodyIndex];
+        Transform frozenRootTf = frozenChildren[rootBodyIndex];
+        if (liveRoot == null || frozenRootTf == null) return;
+        if (liveRoot.bodyType != RigidbodyType2D.Dynamic) return;
+
+        // Spring toward frozen root position, with extra upward bias to ensure
+        // the fighter is clearly moving upward when the trigger fires.
+        Vector2 positionError = (Vector2)frozenRootTf.position - liveRoot.position;
+
+        // Use pose assist spring values if available, otherwise use sensible defaults.
+        float spring = enablePhysicsPoseAssist ? poseAssistSpring : 80f;
+        float damping = enablePhysicsPoseAssist ? poseAssistDamping : 15f;
+        float maxForce = enablePhysicsPoseAssist ? maxPoseAssistForce : 1200f;
+
+        Vector2 force = positionError * spring - liveRoot.linearVelocity * damping;
+        liveRoot.AddForce(Vector2.ClampMagnitude(force, maxForce), ForceMode2D.Force);
     }
 
     private void ApplyPoseTethers()
@@ -3058,6 +3124,16 @@ public class FreezeReplayV2 : MonoBehaviour
         return false;
     }
 
+    /// <summary>
+    /// Velocity-continuation jump trigger.
+    /// During the pre-trigger phase, pose assist and motors drive the fighter's hips
+    /// upward toward the frozen copy, naturally building velocity through leg extension.
+    /// When legs reach full extension, this method:
+    ///   1. Captures the root's existing velocity (built by the extension)
+    ///   2. Releases foot joints so the fighter leaves the ground
+    ///   3. Applies a modest directional boost that continues the existing motion
+    ///   4. Sets forceAirborneMode so the fighter flies freely
+    /// </summary>
     private void CheckJumpTrigger()
     {
         if (trackedBodies == null || rootBodyIndex < 0 || rootBodyIndex >= trackedBodies.Count) return;
@@ -3089,7 +3165,7 @@ public class FreezeReplayV2 : MonoBehaviour
         if (triggered)
         {
             hasJumpTriggered = true;
-            Transform frozenRoot = GetFrozenRootTransform();
+            forceAirborneMode = true; // Transition to airborne — next FixedUpdate disables ground systems
             
             // Force legs out of Auto mode so they don't try to plant themselves mid-air
             foreach (var plan in limbPlans)
@@ -3101,16 +3177,106 @@ public class FreezeReplayV2 : MonoBehaviour
                 }
             }
             
+            // Release planted foot joints so the fighter can actually leave the ground
+            ClearPlantedFootJoints();
+            ClearReplantingFootJoints();
+            plantedFootTargets.Clear();
+            
+            // === VELOCITY CONTINUATION ===
+            // The fighter has been building upward velocity during leg extension.
+            // Capture that velocity and add a directional boost to continue the motion.
+            Vector2 currentVelocity = liveRoot.linearVelocity;
+            
+            Transform frozenRoot = GetFrozenRootTransform();
             Vector2 startRootPos = currentSnapshot != null && rootBodyIndex < currentSnapshot.Length 
                 ? currentSnapshot[rootBodyIndex].position 
                 : liveRoot.position;
 
             if (frozenRoot != null)
             {
-                Vector2 jumpVector = (Vector2)frozenRoot.position - startRootPos;
-                Vector2 impulse = jumpVector * jumpForceMultiplier;
-                liveRoot.AddForce(impulse, ForceMode2D.Impulse);
-                Debug.Log($"[FreezeReplayV2] Jump triggered! Impulse: {impulse} (Ext: {maxExtension:F2})");
+                // Jump direction from frozen copy offset (normalized)
+                Vector2 jumpDirection = ((Vector2)frozenRoot.position - startRootPos).normalized;
+                
+                // The boost magnitude is proportional to the existing velocity.
+                // jumpForceMultiplier acts as a velocity boost factor (e.g., 1.5 = 50% boost).
+                // This makes stronger leg extension → faster upward velocity → stronger jump.
+                float existingSpeed = currentVelocity.magnitude;
+                Vector2 velocityBoost = jumpDirection * (existingSpeed * jumpForceMultiplier);
+                
+                // Apply the velocity boost to ALL bodies for body coherence.
+                // This keeps the fighter's form together during launch.
+                for (int i = 0; i < trackedBodies.Count; i++)
+                {
+                    Rigidbody2D rb = trackedBodies[i];
+                    if (rb == null || rb.bodyType != RigidbodyType2D.Dynamic) continue;
+                    
+                    // Set each body's velocity to match root direction + boost
+                    // This unifies all body velocities for a cohesive launch
+                    float fraction = (i == rootBodyIndex) ? 1f : 0.85f;
+                    rb.linearVelocity = (currentVelocity + velocityBoost) * fraction;
+                }
+                
+                Debug.Log($"[FreezeReplayV2] Jump triggered! Velocity: {currentVelocity}, Boost: {velocityBoost} (Ext: {maxExtension:F2}, Speed: {existingSpeed:F2})");
+            }
+            else
+            {
+                // No frozen root — just unify velocities with the root's current motion
+                for (int i = 0; i < trackedBodies.Count; i++)
+                {
+                    Rigidbody2D rb = trackedBodies[i];
+                    if (rb == null || rb.bodyType != RigidbodyType2D.Dynamic) continue;
+                    rb.linearVelocity = currentVelocity;
+                }
+                Debug.Log($"[FreezeReplayV2] Jump triggered (no frozen root)! Velocity: {currentVelocity}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Compute the rotation delta between live and frozen root, and inject it
+    /// into PoseDrivers whose drivenJoint is connected to the root body.
+    /// This compensates for joint-space target drift when the root rotates
+    /// under gravity during airborne/jump simulation.
+    /// </summary>
+    private void UpdateAirborneRootRotationOffset(bool isAirborne)
+    {
+        if (!isAirborne || poseDrivers == null || poseDrivers.Count == 0)
+        {
+            // Clear offsets when not airborne
+            foreach (var driver in poseDrivers)
+            {
+                if (driver != null)
+                    driver.airborneRootRotationOffset = 0f;
+            }
+            return;
+        }
+
+        if (rootBodyIndex < 0 || rootBodyIndex >= trackedBodies.Count) return;
+
+        Rigidbody2D liveRoot = trackedBodies[rootBodyIndex];
+        Transform frozenRoot = GetFrozenRootTransform();
+        if (liveRoot == null || frozenRoot == null) return;
+
+        float liveRootRotation = liveRoot.rotation;
+        float frozenRootRotation = frozenRoot.eulerAngles.z;
+        float rootDelta = Mathf.DeltaAngle(frozenRootRotation, liveRootRotation);
+
+        foreach (var driver in poseDrivers)
+        {
+            if (driver == null || driver.drivenJoint == null) continue;
+
+            // Only compensate joints directly connected to the root body.
+            // Child-of-child joints (e.g. calf connected to thigh) don't need
+            // compensation because their parent (thigh) is already compensated,
+            // and their jointAngle is relative to the thigh, not the root.
+            Rigidbody2D connectedBody = driver.drivenJoint.connectedBody;
+            if (connectedBody != null && connectedBody == liveRoot)
+            {
+                driver.airborneRootRotationOffset = rootDelta;
+            }
+            else
+            {
+                driver.airborneRootRotationOffset = 0f;
             }
         }
     }
@@ -3936,8 +4102,11 @@ public class FreezeReplayV2 : MonoBehaviour
             targetRootPosition = rootReference + delta.normalized * maxRootMovePerSnapshot;
         }
 
-        // AIRBORNE: No stride or ground restrictions
-        if (forceAirborneMode || isJumpNextSimulation) return targetRootPosition;
+        // LAUNCH READY (isJumpNextSimulation): The frozen copy stays grounded with
+        // at least one foot planted. The user authors the launch direction by moving
+        // the hips higher/farther — the live fighter previews the actual launch in sim.
+        // Only skip constraints when already airborne (forceAirborneMode after launch).
+        if (forceAirborneMode && !isJumpNextSimulation) return targetRootPosition;
 
         // Root dragging is kinematic, so carried non-Auto bodies would otherwise
         // tunnel into the floor and only be corrected after the legs were planned.
@@ -3961,13 +4130,18 @@ public class FreezeReplayV2 : MonoBehaviour
             targetRootPosition = ProjectFrozenRootIntoPlantedLegReach(targetRootPosition, swingFoot);
         }
 
-        // NEW CONSTRAINT: Strict vertical height limit relative to the actual floor
+        // Strict vertical height limit relative to the actual floor.
+        // During LAUNCH READY, allow full leg extension so the user can
+        // author how high/far the launch will go.
         if (TryGetGroundPoint(targetRootPosition, out Vector2 groundPoint))
         {
+            float maxHeight = isJumpNextSimulation
+                ? walkMaxHipGroundDistance * 1.15f  // Full extension for launch direction
+                : walkMaxHipGroundDistance;
             float currentHeight = targetRootPosition.y - groundPoint.y;
-            if (currentHeight > walkMaxHipGroundDistance)
+            if (currentHeight > maxHeight)
             {
-                targetRootPosition.y = groundPoint.y + walkMaxHipGroundDistance;
+                targetRootPosition.y = groundPoint.y + maxHeight;
             }
         }
 

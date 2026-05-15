@@ -23,7 +23,7 @@ public class FRV2Preset
     // --- Physics Pose Assist ---
     public bool enablePhysicsPoseAssist = true;
     public bool poseAssistOnlyRootAndUnjointedBodies = true;
-    public float jumpForceMultiplier = 300f;
+    public float jumpForceMultiplier = 1.5f;
     public float jumpExtensionThreshold = 0.9f;
     
     // --- Pose Tethers ---

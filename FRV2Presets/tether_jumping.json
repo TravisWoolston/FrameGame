@@ -10,7 +10,7 @@
     "maxRootMovePerSnapshot": 2.0,
     "enablePhysicsPoseAssist": false,
     "poseAssistOnlyRootAndUnjointedBodies": true,
-    "jumpForceMultiplier": 50.0,
+    "jumpForceMultiplier": 5,
     "jumpExtensionThreshold": 0.9,
     "poseAssistSpring": 85.0,
     "poseAssistDamping": 25.0,

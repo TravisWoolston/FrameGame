@@ -47,6 +47,11 @@ public class PoseDriver : MonoBehaviour
     [Tooltip("Temporary torque multiplier used by turn intents such as strikes.")]
     public float runtimeTorqueMultiplier = 1f;
 
+    [Header("=== Airborne Compensation ===")]
+    [Tooltip("Rotation delta (live root - frozen root) in degrees. Set by FRV2 during airborne sim so joints connected to the root maintain their world-space orientation.")]
+    [HideInInspector]
+    public float airborneRootRotationOffset = 0f;
+
     [Header("=== References ===")]
     [Tooltip("The HingeJoint2D on this live limb that gets driven")]
     public HingeJoint2D drivenJoint;
@@ -96,6 +101,14 @@ public class PoseDriver : MonoBehaviour
         // (World-space eulerAngles caused winding because the motor's direction
         // doesn't always correspond to the world rotation direction.)
         float targetAngle = NormalizeAngle(targetJoint.jointAngle);
+
+        // Airborne compensation: when the live root (hips) rotates under gravity
+        // but the frozen copy's root stays fixed, jointAngle is measured in a
+        // rotated frame. Subtract the root rotation delta so this joint chases
+        // the world-space pose, not the drifting local-space pose.
+        if (Mathf.Abs(airborneRootRotationOffset) > 0.01f)
+            targetAngle = NormalizeAngle(targetAngle - airborneRootRotationOffset);
+
         float currentAngle = NormalizeAngle(drivenJoint.jointAngle);
         if (drivenJoint.useLimits && !ignoreTargetJointLimits)
             targetAngle = Mathf.Clamp(targetAngle, drivenJoint.limits.min, drivenJoint.limits.max);
@@ -142,6 +155,7 @@ public class PoseDriver : MonoBehaviour
     {
         runtimeSpeedMultiplier = 1f;
         runtimeTorqueMultiplier = 1f;
+        airborneRootRotationOffset = 0f;
     }
 
     private float NormalizeAngle(float angle)
