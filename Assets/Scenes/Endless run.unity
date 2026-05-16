@@ -1261,7 +1261,7 @@ MonoBehaviour:
   Kd: 8
   maxMotorSpeed: 800
   deadzone: 0.5
-  ignoreTargetJointLimits: 0
+  ignoreTargetJointLimits: 1
   runtimeSpeedMultiplier: 1
   runtimeTorqueMultiplier: 1
   airborneRootRotationOffset: 0
@@ -1363,7 +1363,7 @@ MonoBehaviour:
   frozenCopyColor: {r: 0.3, g: 1, b: 0.6, a: 0.5}
   limitFrozenRootMovement: 0
   maxRootMovePerSnapshot: 2
-  turnDuration: 1
+  turnDuration: 0.5
   commitKey: 32
   replayKey: 114
   resetKey: 113
@@ -1434,17 +1434,17 @@ MonoBehaviour:
   replantFootArrivalDistance: 0.15
   logFootReplantingDetails: 0
   jumpForceMultiplier: 5
-  jumpExtensionThreshold: 0.9
+  jumpExtensionThreshold: 0.8
   forceAirborneMode: 0
   isJumpNextSimulation: 0
   jumpTriggerArmed: 0
   enablePosePreviewLoop: 0
   disableDamageDuringPreview: 1
-  previewLoopDuration: 1
+  previewLoopDuration: 0.5
   enableAutoWalkFromHipTarget: 1
   walkMinHipTravel: 0.35
   walkMaxHipGroundDistance: 6.357
-  walkMaxStrideDistance: 6
+  walkMaxStrideDistance: 10
   walkStepLead: 0.85
   walkFootSpacing: 3
   walkStepLift: 0.8

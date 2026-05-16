@@ -531,6 +531,14 @@ public class FreezeReplayV2 : MonoBehaviour
         {
             CheckJumpTrigger();
         }
+
+        // When airborne, continuously check if feet have touched ground.
+        // On landing, switch legs to Auto so they can replant naturally
+        // without requiring the frozen copy to be near.
+        if (isPostJumpAirborne)
+        {
+            CheckAirborneLanding();
+        }
         
         CheckReplantingFootArrival();
 
@@ -745,7 +753,10 @@ public class FreezeReplayV2 : MonoBehaviour
         posePreviewFixedStepsRemaining = 0;
         StartPosePreviewLoop();
 
-        if (currentPhase == TurnPhase.Posing)
+        // Only show the frozen copy on preview restart if we are NOT in LAUNCH READY
+        // mode. In LAUNCH READY, the frozen copy is already positioned at the authored
+        // launch target — reshowing it here could cause a flicker or drift.
+        if (currentPhase == TurnPhase.Posing && !isJumpNextSimulation)
             ShowFrozenCopy();
     }
 
@@ -3233,6 +3244,61 @@ public class FreezeReplayV2 : MonoBehaviour
     }
 
     /// <summary>
+    /// During airborne simulation, raycasts from each foot body.
+    /// On ground contact, anchors the foot with a FixedJoint2D to the world-space
+    /// hit point. forceAirborneMode stays TRUE so no frozen-copy-driven assist runs.
+    /// Intent modes and the frozen copy are NOT modified -- the live fighter settles
+    /// via physics + PoseDrivers while anchored feet resist the fall.
+    /// </summary>
+    private void CheckAirborneLanding()
+    {
+        if (trackedBodies == null || limbPlans == null) return;
+        if (rootBodyIndex < 0 || rootBodyIndex >= trackedBodies.Count) return;
+
+        Rigidbody2D liveRoot = trackedBodies[rootBodyIndex];
+        if (liveRoot == null) return;
+
+        // Only detect landing while root is moving downward.
+        // Prevents immediate re-trigger right after the jump impulse.
+        if (liveRoot.linearVelocity.y > 0.5f) return;
+
+        foreach (var plan in limbPlans)
+        {
+            if (plan == null || plan.liveBody == null) continue;
+            if (!IsFootLimb(plan.liveBody.name) && !IsLowerLeg(plan.liveBody.name)) continue;
+
+            Rigidbody2D footRb = plan.liveBody;
+
+            // Skip if this foot is already anchored.
+            if (plantedFootJoints.ContainsKey(footRb)) continue;
+
+            // Probe slightly above the foot to account for collider radius.
+            Vector2 probeOrigin = footRb.position + Vector2.up * 0.15f;
+            float probeDistance = footGroundOffset + 0.35f;
+            RaycastHit2D hit = Physics2D.Raycast(probeOrigin, Vector2.down, probeDistance, groundMask);
+            if (hit.collider == null) continue;
+
+            // Nail the foot to the world at the ground contact point.
+            // Use the same FixedJoint2D parameters as the normal planted-foot system.
+            Vector2 anchorPoint = hit.point + Vector2.up * footGroundOffset;
+            FixedJoint2D joint = footRb.gameObject.AddComponent<FixedJoint2D>();
+            joint.autoConfigureConnectedAnchor = false;
+            joint.anchor = Vector2.zero;
+            joint.connectedBody = null;
+            joint.connectedAnchor = anchorPoint;
+            joint.enableCollision = false;
+            joint.frequency = Mathf.Max(0f, plantedFootJointFrequency);
+            joint.dampingRatio = Mathf.Clamp01(plantedFootJointDampingRatio);
+            joint.breakForce = Mathf.Max(0f, plantedFootJointBreakForce);
+            joint.breakTorque = Mathf.Max(0f, plantedFootJointBreakTorque);
+            plantedFootJoints[footRb] = joint;
+            plantedFootTargets[footRb] = anchorPoint;
+
+            Debug.Log($"[FreezeReplayV2] Landing: anchored '{footRb.name}' at {anchorPoint}");
+        }
+    }
+
+    /// <summary>
     /// Compute the rotation delta between live and frozen root, and inject it
     /// into PoseDrivers whose drivenJoint is connected to the root body.
     /// This compensates for joint-space target drift when the root rotates
@@ -3250,7 +3316,7 @@ public class FreezeReplayV2 : MonoBehaviour
             }
             return;
         }
-
+ 
         if (rootBodyIndex < 0 || rootBodyIndex >= trackedBodies.Count) return;
 
         Rigidbody2D liveRoot = trackedBodies[rootBodyIndex];

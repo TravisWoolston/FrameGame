@@ -152,7 +152,7 @@ public class FighterRuntimeRigBuilder : MonoBehaviour
         generatedRoot.localScale = Vector3.one;
 
         Rigidbody2D hipsBody = CreateCircleBody("Hips", hips.position, jointRadius, coreMass, bodyColor, jointSortingOrder, GetMarkerLayer(hips));
-
+        hipsBody.freezeRotation = true;
         Rigidbody2D spineBody = null;
         if (shoulders != null)
         {
