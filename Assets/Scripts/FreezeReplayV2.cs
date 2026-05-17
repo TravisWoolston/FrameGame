@@ -388,6 +388,10 @@ public class FreezeReplayV2 : MonoBehaviour
     private Dictionary<Rigidbody2D, DistanceJoint2D> poseTetherJoints = new Dictionary<Rigidbody2D, DistanceJoint2D>();
     private Dictionary<DistanceJoint2D, float> poseTetherStartDistances = new Dictionary<DistanceJoint2D, float>();
 
+    // Tracks if the fighter has landed during the current simulation turn (preview or committed).
+    // Used to protect landing foot joints from being cleared, and to switch legs back to Auto on the next turn.
+    private bool hasLandedThisTurn = false;
+
     // ===== LIFECYCLE =====
 
     void Start()
@@ -522,7 +526,8 @@ public class FreezeReplayV2 : MonoBehaviour
         }
         else
         {
-            ClearPlantedFootJoints();
+            if (!hasLandedThisTurn)
+                ClearPlantedFootJoints();
             ClearReplantingFootJoints();
             ClearPoseTethers();
         }
@@ -660,6 +665,7 @@ public class FreezeReplayV2 : MonoBehaviour
         }
 
         hasJumpTriggered = false;
+        hasLandedThisTurn = false; // Clear landing flag for fresh committed turn simulation
 
         if (isJumpNextSimulation)
         {
@@ -742,6 +748,7 @@ public class FreezeReplayV2 : MonoBehaviour
 
         posePreviewLoopRunning = true;
         posePreviewRestartRequested = false;
+        hasLandedThisTurn = false;
     }
 
     private void RestartPosePreviewLoop()
@@ -784,6 +791,7 @@ public class FreezeReplayV2 : MonoBehaviour
             jumpTriggerArmed = false;
             hasJumpTriggered = false;
         }
+        hasLandedThisTurn = false; // Reset preview landing flag
 
         if (restoreSnapshot && currentSnapshot != null)
             RestoreSnapshot(currentSnapshot);
@@ -1711,6 +1719,23 @@ public class FreezeReplayV2 : MonoBehaviour
 
             if (plan.intent != null)
                 plan.intent.FinishSnapshot(strikeRecoverySnapshots);
+        }
+
+        // If the fighter landed during the simulation, switch leg intents to Auto mode
+        // so that in the next turn's posing phase, the preview copy starts in Auto mode!
+        if (hasLandedThisTurn)
+        {
+            foreach (var plan in limbPlans)
+            {
+                if (plan != null && plan.intent != null && IsLegLimb(plan.liveBody.name))
+                {
+                    plan.intent.mode = LimbMoveIntent.MoveMode.Auto;
+                }
+            }
+            // Also reset forceAirborneMode since we have landed on the ground!
+            forceAirborneMode = false;
+            
+            Debug.Log("[FreezeReplayV2] Snapshot captured on ground: switching legs to Auto and setting forceAirborneMode = false.");
         }
 
         plantedFootTargets.Clear();
@@ -3262,6 +3287,8 @@ public class FreezeReplayV2 : MonoBehaviour
         // Prevents immediate re-trigger right after the jump impulse.
         if (liveRoot.linearVelocity.y > 0.5f) return;
 
+        bool anyFootLanded = false;
+
         foreach (var plan in limbPlans)
         {
             if (plan == null || plan.liveBody == null) continue;
@@ -3294,7 +3321,13 @@ public class FreezeReplayV2 : MonoBehaviour
             plantedFootJoints[footRb] = joint;
             plantedFootTargets[footRb] = anchorPoint;
 
+            anyFootLanded = true;
             Debug.Log($"[FreezeReplayV2] Landing: anchored '{footRb.name}' at {anchorPoint}");
+        }
+
+        if (anyFootLanded)
+        {
+            hasLandedThisTurn = true;
         }
     }
 
