@@ -40,6 +40,19 @@ public class PoseDriver : MonoBehaviour
     [Tooltip("Allow this driver to chase target angles outside the driven joint's normal limits.")]
     public bool ignoreTargetJointLimits = false;
 
+    [Header("=== Anatomical Multipliers ===")]
+    [Tooltip("Anatomical multiplier for Kp. Set automatically based on bone name at Start, but can be overridden.")]
+    public float KpMultiplier = 1.0f;
+
+    [Tooltip("Anatomical multiplier for Kd. Set automatically based on bone name at Start, but can be overridden.")]
+    public float KdMultiplier = 1.0f;
+
+    [Header("=== Hit Reaction State ===")]
+    [Tooltip("Current hit reaction multiplier. Weakens joint motor on impact.")]
+    public float hitReactionMultiplier = 1.0f;
+    private float hitReactionTimer = 0f;
+    private float hitReactionDuration = 0f;
+
     [Header("=== Runtime Multipliers ===")]
     [Tooltip("Temporary speed multiplier used by turn intents such as strikes.")]
     public float runtimeSpeedMultiplier = 1f;
@@ -79,6 +92,49 @@ public class PoseDriver : MonoBehaviour
             hadOriginalLimits = drivenJoint.useLimits;
             originalMotorTorque = Mathf.Max(1f, drivenJoint.motor.maxMotorTorque);
             initialized = true;
+
+            // Auto-configure anatomical multipliers based on limb name
+            string n = gameObject.name.ToLowerInvariant();
+            if (n.Contains("spine") || n.Contains("torso") || n.Contains("body"))
+            {
+                KpMultiplier = 2.0f;
+                KdMultiplier = 1.5f;
+            }
+            else if (n.Contains("head"))
+            {
+                KpMultiplier = 0.6f;
+                KdMultiplier = 0.8f; // Head wobbles slightly on hit
+            }
+            else if (n.Contains("thigh") || n.Contains("knee"))
+            {
+                KpMultiplier = 1.2f;
+                KdMultiplier = 1.0f;
+            }
+            else if (n.Contains("calf") || n.Contains("shin") || n.Contains("lower leg"))
+            {
+                KpMultiplier = 1.0f;
+                KdMultiplier = 1.0f;
+            }
+            else if (n.Contains("foot") || n.Contains("toe"))
+            {
+                KpMultiplier = 0.5f;
+                KdMultiplier = 0.8f; // Floppy feet
+            }
+            else if (n.Contains("upper arm") || n.Contains("shoulder"))
+            {
+                KpMultiplier = 0.8f;
+                KdMultiplier = 0.8f;
+            }
+            else if (n.Contains("lower arm") || n.Contains("elbow"))
+            {
+                KpMultiplier = 0.7f;
+                KdMultiplier = 0.7f;
+            }
+            else if (n.Contains("hand") || n.Contains("fist"))
+            {
+                KpMultiplier = 0.4f;
+                KdMultiplier = 0.6f; // Floppy hands/fists trail behind
+            }
         }
     }
 
@@ -93,6 +149,22 @@ public class PoseDriver : MonoBehaviour
         {
             settlingFrames--;
             return;
+        }
+
+        // Process hit reaction fadeout
+        if (hitReactionTimer > 0f)
+        {
+            hitReactionTimer -= Time.fixedDeltaTime;
+            if (hitReactionTimer <= 0f)
+            {
+                hitReactionMultiplier = 1.0f;
+            }
+            else
+            {
+                // Smoothly fade the reaction back to 1.0
+                float t = 1f - (hitReactionTimer / hitReactionDuration);
+                hitReactionMultiplier = Mathf.Lerp(hitReactionMultiplier, 1.0f, t);
+            }
         }
 
         // Compare jointAngle (the angle between this body and its connected body).
@@ -126,21 +198,23 @@ public class PoseDriver : MonoBehaviour
         // Use the joint's built-in angular speed for damping.
         // This is pre-smoothed by the physics engine — no jitter.
         // Negative sign because we want to resist current motion (dampen).
-        float damping = -drivenJoint.jointSpeed * Kd;
+        float damping = -drivenJoint.jointSpeed * (Kd * KdMultiplier);
 
         float speedMultiplier = Mathf.Max(0.01f, runtimeSpeedMultiplier);
         float torqueMultiplier = Mathf.Max(0.01f, runtimeTorqueMultiplier);
 
         // PD output: proportional drives toward target, damping prevents overshoot.
         // Runtime multipliers let strikes move faster without changing base tuning.
-        float motorSpeed = (Kp * error + damping) * speedMultiplier;
+        // Kp and Kd multipliers apply anatomical tuning.
+        // hitReactionMultiplier reduces gains and torque on collision.
+        float motorSpeed = (Kp * KpMultiplier * hitReactionMultiplier * error + damping) * speedMultiplier;
         float speedLimit = Mathf.Max(1f, maxMotorSpeed * speedMultiplier);
         motorSpeed = Mathf.Clamp(motorSpeed, -speedLimit, speedLimit);
 
         // Apply to motor — ensure torque is high enough to move the limb
         JointMotor2D motor = drivenJoint.motor;
         motor.motorSpeed = motorSpeed;
-        motor.maxMotorTorque = Mathf.Max(originalMotorTorque, 150f) * torqueMultiplier;
+        motor.maxMotorTorque = Mathf.Max(originalMotorTorque, 150f) * torqueMultiplier * hitReactionMultiplier;
         drivenJoint.motor = motor;
         drivenJoint.useMotor = true;
     }
@@ -156,6 +230,18 @@ public class PoseDriver : MonoBehaviour
         runtimeSpeedMultiplier = 1f;
         runtimeTorqueMultiplier = 1f;
         airborneRootRotationOffset = 0f;
+        hitReactionMultiplier = 1f;
+        hitReactionTimer = 0f;
+    }
+
+    /// <summary>
+    /// Soften the motor of this joint temporarily when struck.
+    /// </summary>
+    public void ApplyHitReaction(float duration, float targetMultiplier)
+    {
+        hitReactionMultiplier = Mathf.Clamp01(targetMultiplier);
+        hitReactionTimer = Mathf.Max(0f, duration);
+        hitReactionDuration = Mathf.Max(0.01f, duration);
     }
 
     private float NormalizeAngle(float angle)

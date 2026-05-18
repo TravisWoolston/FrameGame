@@ -25,6 +25,7 @@ public class FRV2Preset
     public bool poseAssistOnlyRootAndUnjointedBodies = true;
     public float jumpForceMultiplier = 1.5f;
     public float jumpExtensionThreshold = 0.9f;
+    public float ragdollDamageThreshold = 25f;
     
     // --- Pose Tethers ---
     public bool enablePoseTethers = false;
@@ -133,6 +134,7 @@ public class FRV2Preset
             tetherBreakForce = frv2.tetherBreakForce,
             jumpForceMultiplier = frv2.jumpForceMultiplier,
             jumpExtensionThreshold = frv2.jumpExtensionThreshold,
+            ragdollDamageThreshold = frv2.ragdollDamageThreshold,
             poseAssistSpring = frv2.poseAssistSpring,
             poseAssistDamping = frv2.poseAssistDamping,
             maxPoseAssistForce = frv2.maxPoseAssistForce,
@@ -219,6 +221,7 @@ public class FRV2Preset
         frv2.tetherBreakForce = tetherBreakForce;
         frv2.jumpForceMultiplier = jumpForceMultiplier;
         frv2.jumpExtensionThreshold = jumpExtensionThreshold;
+        frv2.ragdollDamageThreshold = ragdollDamageThreshold > 0.001f ? ragdollDamageThreshold : 25f;
 
         frv2.poseAssistSpring = poseAssistSpring;
         frv2.poseAssistDamping = poseAssistDamping;

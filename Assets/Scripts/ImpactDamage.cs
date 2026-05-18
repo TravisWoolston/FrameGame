@@ -174,6 +174,34 @@ public class ImpactDamage : MonoBehaviour
 
         ApplyStrikeImpulse(collision, attackerIntent);
 
+        // Phase 1.2: Soften joints temporarily on collision (Hit Reaction)
+        PoseDriver selfPd = GetComponent<PoseDriver>();
+        if (selfPd != null)
+        {
+            float intensity = Mathf.Clamp(finalDamage / 20f, 0.2f, 0.95f);
+            float duration = Mathf.Clamp(finalDamage * 0.01f, 0.1f, 0.4f);
+            selfPd.ApplyHitReaction(duration, 1f - intensity);
+        }
+
+        HingeJoint2D hj = GetComponent<HingeJoint2D>();
+        if (hj != null && hj.connectedBody != null)
+        {
+            PoseDriver parentPd = hj.connectedBody.GetComponent<PoseDriver>();
+            if (parentPd != null)
+            {
+                float intensity = Mathf.Clamp(finalDamage / 40f, 0.1f, 0.7f);
+                float duration = Mathf.Clamp(finalDamage * 0.008f, 0.08f, 0.3f);
+                parentPd.ApplyHitReaction(duration, 1f - intensity);
+            }
+        }
+
+        // Phase 1.3: Trigger full ragdoll on high-damage impacts
+        FreezeReplayV2 fr = GetOwnerController();
+        if (fr != null && finalDamage >= fr.ragdollDamageThreshold)
+        {
+            fr.TriggerRagdoll();
+        }
+
         if (suppressDamageEffects)
             return;
 
@@ -309,6 +337,24 @@ public class ImpactDamage : MonoBehaviour
 
         float intensity = Mathf.Clamp(damage * shakeIntensity * 0.01f, 0.05f, 0.5f);
         shaker.Shake(intensity, shakeDuration);
+    }
+
+    /// <summary>
+    /// Traverses all FreezeReplayV2 instances in the scene to identify the unique
+    /// instance that owns this specific fighter (by checking parent-child transform relationships).
+    /// This enables seamless multi-fighter local gameplay without controller conflicts.
+    /// </summary>
+    private FreezeReplayV2 GetOwnerController()
+    {
+        FreezeReplayV2[] controllers = FindObjectsOfType<FreezeReplayV2>();
+        foreach (var fr in controllers)
+        {
+            if (fr != null && fr.playerObj != null && (fr.playerObj == this.gameObject || transform.IsChildOf(fr.playerObj.transform)))
+            {
+                return fr;
+            }
+        }
+        return null;
     }
 }
 

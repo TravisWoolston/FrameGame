@@ -164,7 +164,8 @@ public class FreezeReplayV2Editor : Editor
             "moveUIMinimizedHeight",
             "strikeDamageMultiplier",
             "strikeImpactImpulse",
-            "blockIncomingDamageMultiplier");
+            "blockIncomingDamageMultiplier",
+            "ragdollDamageThreshold");
 
         DrawAdvancedSection(ref showRigAdvanced, drawn, "Advanced Rig Diagnostics",
             "logRigValidationDetails");

@@ -86,6 +86,7 @@ public class SmartPoser : MonoBehaviour
     private UnityEngine.U2D.SpriteShapeRenderer hoveredSSRenderer;
     private Color hoveredOriginalColor;
     private bool hoveredIsHead = false;
+    private int activeDragMouseButton = -1; // Track which mouse button is dragging: -1 = none, 0 = left, 1 = right
 
     // Visual feedback objects
     private LineRenderer dragLineRenderer;
@@ -133,19 +134,34 @@ public class SmartPoser : MonoBehaviour
 
         HandleHoverHighlight();
 
-        if (Input.GetMouseButtonDown(0))
+        // Check for start of drag on left or right click
+        if (activeDragMouseButton == -1)
         {
-            TryStartDrag();
+            if (Input.GetMouseButtonDown(0))
+            {
+                activeDragMouseButton = 0;
+                TryStartDrag(0);
+            }
+            else if (Input.GetMouseButtonDown(1))
+            {
+                activeDragMouseButton = 1;
+                TryStartDrag(1);
+            }
         }
 
-        if (Input.GetMouseButton(0) && (activeTargetJoint != null || directRootDrag))
+        // If dragging, update with the active mouse button
+        if (activeDragMouseButton != -1)
         {
-            UpdateDrag();
-        }
+            if (Input.GetMouseButton(activeDragMouseButton) && (activeTargetJoint != null || directRootDrag))
+            {
+                UpdateDrag();
+            }
 
-        if (Input.GetMouseButtonUp(0))
-        {
-            EndDrag();
+            if (Input.GetMouseButtonUp(activeDragMouseButton))
+            {
+                EndDrag();
+                activeDragMouseButton = -1;
+            }
         }
 
         // Update visual feedback
@@ -190,7 +206,7 @@ public class SmartPoser : MonoBehaviour
     /// Attempts to start dragging a frozen copy body part under the mouse.
     /// Creates a TargetJoint2D which uses Unity's constraint solver as a natural IK system.
     /// </summary>
-    void TryStartDrag()
+    void TryStartDrag(int mouseButton)
     {
         GameObject frozenObj = GetFrozenCopy();
         if (frozenObj == null) return;
@@ -201,7 +217,18 @@ public class SmartPoser : MonoBehaviour
         Rigidbody2D rb = PickPreferredBody(validHit, mouseWorld, out _);
 
         if (rb != null)
+        {
             StartDraggingBody(frozenObj, rb, mouseWorld);
+
+            // Automatically toggle the corresponding limb plan to Basic/Block (Left Click) or Strike (Right Click)
+            if (freezeReplayV2 != null && !freezeReplayV2.IsFrozenRootBody(rb.gameObject))
+            {
+                LimbMoveIntent.MoveMode targetMode = (mouseButton == 0) 
+                    ? LimbMoveIntent.MoveMode.BasicBlock 
+                    : LimbMoveIntent.MoveMode.Strike;
+                freezeReplayV2.SetLimbIntentMode(rb.gameObject, targetMode);
+            }
+        }
     }
 
     void StartDraggingBody(GameObject frozenObj, Rigidbody2D rb, Vector2 mouseWorld)
@@ -814,6 +841,12 @@ public class SmartPoser : MonoBehaviour
             rb.linearVelocity = Vector2.zero;
             rb.angularVelocity = 0f;
         }
+    }
+
+    void OnDisable()
+    {
+        EndDrag();
+        activeDragMouseButton = -1;
     }
 
     void OnDestroy()

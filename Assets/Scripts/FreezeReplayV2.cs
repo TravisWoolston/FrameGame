@@ -200,6 +200,14 @@ public class FreezeReplayV2 : MonoBehaviour
     [HideInInspector] public bool jumpTriggerArmed = false;
     private bool hasJumpTriggered = false;
 
+    [Header("=== Ragdoll & Floor Tumble ===")]
+    [Tooltip("Damage threshold to trigger full ragdoll for the rest of the turn.")]
+    public float ragdollDamageThreshold = 25f;
+    [HideInInspector] public bool isRagdolled = false;
+
+    private Dictionary<Collider2D, PhysicsMaterial2D> originalMaterials = new Dictionary<Collider2D, PhysicsMaterial2D>();
+    private PhysicsMaterial2D ragdollMaterial;
+
     [Header("=== Posing Preview Loop ===")]
     public bool enablePosePreviewLoop = true;
     public bool disableDamageDuringPreview = true;
@@ -454,7 +462,20 @@ public class FreezeReplayV2 : MonoBehaviour
             Debug.Log($"[FreezeReplayV2] Auto-calculated leg length: {autoLength:F2}");
         }
 
+        // Create high-friction physics material for floor tumbling
+        ragdollMaterial = new PhysicsMaterial2D("RagdollMaterial")
+        {
+            friction = 0.8f,
+            bounciness = 0.2f
+        };
+
         Debug.Log($"[FreezeReplayV2] Spawned '{playerObj.name}' with {trackedBodies.Count} bodies. Ready to pose.");
+
+        // Re-evaluate cross-fighter ghost collision ignores to accommodate initialization order
+        ReapplyFighterGhostCollisionIgnores();
+
+        // Explicitly force live fighter limbs to collide (bypassing any accidental layer overrides)
+        EnableCrossFighterCollisions();
     }
 
     void Update()
@@ -494,6 +515,20 @@ public class FreezeReplayV2 : MonoBehaviour
         bool shouldDrivePhysics = isCommittedSimulation
             || (currentPhase == TurnPhase.Posing && posePreviewLoopRunning);
         if (!shouldDrivePhysics) return;
+
+        if (isRagdolled)
+        {
+            // Full ragdoll: disable all PoseDrivers, release all tethers/plants, and let raw physics take over
+            foreach (var plan in limbPlans)
+            {
+                if (plan != null && plan.poseDriver != null)
+                    plan.poseDriver.enablePoseDriver = false;
+            }
+            ClearPlantedFootJoints();
+            ClearReplantingFootJoints();
+            ClearPoseTethers();
+            return;
+        }
 
         // Jump has two phases:
         // Phase 1 (pre-trigger): legs extend upward, all assist systems active.
@@ -815,6 +850,8 @@ public class FreezeReplayV2 : MonoBehaviour
             if (plan.intent != null)
                 plan.intent.ClearRuntimePreview();
         }
+
+        ResetRagdollState();
     }
 
     private float GetPreviewLoopDuration()
@@ -1411,19 +1448,9 @@ public class FreezeReplayV2 : MonoBehaviour
             rb.angularVelocity = 0f;
         }
 
-        // --- Disable collisions between frozen copy and live fighter ---
-        // Instead of changing layers (which breaks SmartPoser raycast detection),
-        // use Physics2D.IgnoreCollision between each pair of colliders.
-        Collider2D[] liveColliders = playerObj.GetComponentsInChildren<Collider2D>(true);
-        Collider2D[] frozenColliders = clone.GetComponentsInChildren<Collider2D>(true);
-        foreach (var liveCol in liveColliders)
-        {
-            foreach (var frozenCol in frozenColliders)
-            {
-                if (liveCol != null && frozenCol != null)
-                    Physics2D.IgnoreCollision(liveCol, frozenCol);
-            }
-        }
+        // --- Disable collisions between this frozen copy and ALL live fighters in the scene ---
+        // This prevents physical interference from opponent ghosts, enabling clean, direct local multi-fighter collisions.
+        ReapplyFighterGhostCollisionIgnores();
 
         // --- Tint renderers so it's visually distinct ---
         foreach (var sr in clone.GetComponentsInChildren<SpriteRenderer>(true))
@@ -1699,7 +1726,11 @@ public class FreezeReplayV2 : MonoBehaviour
 
             float velocityMultiplier = plan.intent.CurrentVelocityMultiplier;
             if (plan.poseDriver != null)
-                plan.poseDriver.SetRuntimeMultipliers(velocityMultiplier, velocityMultiplier);
+            {
+                // Give strikes an extra torque boost to overcome inertia and accelerate instantly
+                float torqueMultiplier = plan.intent.IsActiveStrike ? velocityMultiplier * 1.5f : velocityMultiplier;
+                plan.poseDriver.SetRuntimeMultipliers(velocityMultiplier, torqueMultiplier);
+            }
         }
 
         CachePlantedFootTargets();
@@ -1742,6 +1773,8 @@ public class FreezeReplayV2 : MonoBehaviour
         ClearPlantedFootJoints();
         ClearReplantingFootJoints();
         RefreshFrozenIntentTints();
+
+        ResetRagdollState();
     }
 
     private float GetIntentVelocityMultiplier(int bodyIndex)
@@ -1879,6 +1912,28 @@ public class FreezeReplayV2 : MonoBehaviour
             Transform target = frozenChildren[i];
             
             if (rb == null || target == null || rb.bodyType != RigidbodyType2D.Dynamic) continue;
+
+            // Skip striking limbs entirely — tethers would restrict their explosive velocity and range of motion!
+            LimbPlan plan = null;
+            for (int pIdx = 0; pIdx < limbPlans.Count; pIdx++)
+            {
+                if (limbPlans[pIdx].bodyIndex == i)
+                {
+                    plan = limbPlans[pIdx];
+                    break;
+                }
+            }
+            if (plan != null && plan.intent != null && plan.intent.IsActiveStrike)
+            {
+                // If a tether was already created, destroy it
+                if (poseTetherJoints.TryGetValue(rb, out DistanceJoint2D existing))
+                {
+                    existing.enabled = false;
+                    Destroy(existing);
+                    poseTetherJoints.Remove(rb);
+                }
+                continue;
+            }
             
             // In airborne mode, the root has NO world-space tether (falls via gravity)
             if (isAirborne && i == rootBodyIndex)
@@ -3682,6 +3737,7 @@ public class FreezeReplayV2 : MonoBehaviour
 
         if (sourcePlan == null || sourcePlan.liveBody == null) return;
         bool isLeg = IsLegLimb(sourcePlan.liveBody.name);
+        bool isArm = IsArmLimb(sourcePlan.liveBody.name);
         bool isLeft = IsLeftSide(sourcePlan);
 
         foreach (var p in limbPlans)
@@ -3692,8 +3748,13 @@ public class FreezeReplayV2 : MonoBehaviour
             {
                 ApplyModeToPlan(p, newMode);
             }
-            else if (!isLeg && !IsLegLimb(p.liveBody.name) && IsLeftSide(p) == isLeft)
+            else if (isArm && IsArmLimb(p.liveBody.name) && IsLeftSide(p) == isLeft)
             {
+                ApplyModeToPlan(p, newMode);
+            }
+            else if (!isLeg && !isArm && p == sourcePlan)
+            {
+                // If it is a core/torso body like Spine or Head, only toggle it individually!
                 ApplyModeToPlan(p, newMode);
             }
         }
@@ -3712,6 +3773,33 @@ public class FreezeReplayV2 : MonoBehaviour
             case LimbMoveIntent.MoveMode.Strike:
                 plan.intent.QueueStrike();
                 break;
+        }
+    }
+
+    /// <summary>
+    /// Finds the LimbPlan associated with a given frozen or live body GameObject,
+    /// and sets the intent for its entire limb group to the specified mode.
+    /// </summary>
+    public void SetLimbIntentMode(GameObject bodyObj, LimbMoveIntent.MoveMode mode)
+    {
+        if (bodyObj == null || limbPlans == null) return;
+
+        // Clean up the name to find the match (stripping clone suffixes)
+        string targetName = bodyObj.name.Replace("(Clone)", "").Trim();
+
+        foreach (var plan in limbPlans)
+        {
+            if (plan == null) continue;
+            
+            bool match = false;
+            if (plan.liveBody != null && plan.liveBody.name == targetName) match = true;
+            else if (plan.frozenBody != null && plan.frozenBody.name == targetName) match = true;
+
+            if (match)
+            {
+                QueueIntentForEntireLimb(plan, mode);
+                break;
+            }
         }
     }
 
@@ -4663,5 +4751,145 @@ public class FreezeReplayV2 : MonoBehaviour
 
         LoadPreset(autoLoadPresetName);
         Debug.Log($"[FreezeReplayV2] Auto-loaded preset '{autoLoadPresetName}'.");
+    }
+
+    // ===== RAGDOLL SYSTEM (PHASE 1.3 & 1.4) =====
+
+    /// <summary>
+    /// Trigger full ragdoll for the live fighter, letting raw physics take over
+    /// and applying a high-friction material for floor tumbling.
+    /// </summary>
+    public void TriggerRagdoll()
+    {
+        if (isRagdolled) return;
+        isRagdolled = true;
+
+        foreach (var plan in limbPlans)
+        {
+            if (plan != null && plan.poseDriver != null)
+                plan.poseDriver.enablePoseDriver = false;
+        }
+
+        ClearPlantedFootJoints();
+        ClearReplantingFootJoints();
+        ClearPoseTethers();
+
+        // Phase 1.4: Apply high-friction material for floor tumbling
+        ApplyRagdollPhysicsMaterials();
+
+        Debug.Log("[FreezeReplayV2] Fighter entered full RAGDOLL tumble state!");
+    }
+
+    /// <summary>
+    /// Restores PoseDrivers and resets original physics materials on all body colliders.
+    /// </summary>
+    private void ResetRagdollState()
+    {
+        if (!isRagdolled) return;
+        isRagdolled = false;
+
+        foreach (var plan in limbPlans)
+        {
+            if (plan != null && plan.poseDriver != null)
+                plan.poseDriver.enablePoseDriver = true;
+        }
+
+        RestoreOriginalPhysicsMaterials();
+        Debug.Log("[FreezeReplayV2] Ragdoll state reset, PoseDrivers re-enabled.");
+    }
+
+    private void ApplyRagdollPhysicsMaterials()
+    {
+        if (trackedBodies == null) return;
+
+        foreach (var rb in trackedBodies)
+        {
+            if (rb == null) continue;
+            Collider2D[] colliders = rb.GetComponents<Collider2D>();
+            foreach (var col in colliders)
+            {
+                if (col == null) continue;
+                if (!originalMaterials.ContainsKey(col))
+                {
+                    originalMaterials[col] = col.sharedMaterial;
+                }
+                col.sharedMaterial = ragdollMaterial;
+            }
+        }
+    }
+
+    private void RestoreOriginalPhysicsMaterials()
+    {
+        foreach (var kvp in originalMaterials)
+        {
+            if (kvp.Key != null)
+            {
+                kvp.Key.sharedMaterial = kvp.Value;
+            }
+        }
+        originalMaterials.Clear();
+    }
+
+    /// <summary>
+    /// Re-evaluates and ignores collisions between all active live fighters and all frozen copy ghosts
+    /// in the scene. This prevents physics interference from opponent posing ghosts.
+    /// </summary>
+    public void ReapplyFighterGhostCollisionIgnores()
+    {
+        FreezeReplayV2[] allControllers = FindObjectsOfType<FreezeReplayV2>();
+        foreach (var frSource in allControllers)
+        {
+            if (frSource == null || frSource.playerObj == null) continue;
+            Collider2D[] liveColliders = frSource.playerObj.GetComponentsInChildren<Collider2D>(true);
+
+            foreach (var frTarget in allControllers)
+            {
+                if (frTarget == null || frTarget.frozenCopy == null) continue;
+                Collider2D[] frozenColliders = frTarget.frozenCopy.GetComponentsInChildren<Collider2D>(true);
+
+                foreach (var liveCol in liveColliders)
+                {
+                    foreach (var frozenCol in frozenColliders)
+                    {
+                        if (liveCol != null && frozenCol != null)
+                            Physics2D.IgnoreCollision(liveCol, frozenCol);
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Explicitly enables physical collisions between the live colliders of different fighters.
+    /// This bypasses any custom IgnoreCollision calls or layer matrix overrides.
+    /// </summary>
+    public void EnableCrossFighterCollisions()
+    {
+        FreezeReplayV2[] allControllers = FindObjectsOfType<FreezeReplayV2>();
+        for (int i = 0; i < allControllers.Length; i++)
+        {
+            var frA = allControllers[i];
+            if (frA == null || frA.playerObj == null) continue;
+            Collider2D[] collidersA = frA.playerObj.GetComponentsInChildren<Collider2D>(true);
+
+            for (int j = i + 1; j < allControllers.Length; j++)
+            {
+                var frB = allControllers[j];
+                if (frB == null || frB.playerObj == null) continue;
+                Collider2D[] collidersB = frB.playerObj.GetComponentsInChildren<Collider2D>(true);
+
+                foreach (var colA in collidersA)
+                {
+                    foreach (var colB in collidersB)
+                    {
+                        if (colA != null && colB != null)
+                        {
+                            // Explicitly force them to collide!
+                            Physics2D.IgnoreCollision(colA, colB, false);
+                        }
+                    }
+                }
+            }
+        }
     }
 }
