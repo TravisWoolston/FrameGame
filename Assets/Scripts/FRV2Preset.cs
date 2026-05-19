@@ -109,6 +109,14 @@ public class FRV2Preset
     public float strikeDamageMultiplier = 1.5f;
     public float strikeImpactImpulse = 8f;
     public float blockIncomingDamageMultiplier = 0.75f;
+    public float strikeImpulseAngularSpeed = 1200f;
+    public int strikeImpulseFrames = 6;
+
+    // --- Hit Stun ---
+    public float hitStunDurationPerDamage = 0.08f;
+    public float maxHitStunDuration = 1.0f;
+    public float hitStunImpulsePerDamage = 3f;
+    public float maxHitStunImpulse = 40f;
 
     // ===== SNAPSHOT FROM FRV2 =====
 
@@ -197,7 +205,13 @@ public class FRV2Preset
             strikeVelocityMultiplier = frv2.strikeVelocityMultiplier,
             strikeDamageMultiplier = frv2.strikeDamageMultiplier,
             strikeImpactImpulse = frv2.strikeImpactImpulse,
-            blockIncomingDamageMultiplier = frv2.blockIncomingDamageMultiplier
+            blockIncomingDamageMultiplier = frv2.blockIncomingDamageMultiplier,
+            strikeImpulseAngularSpeed = frv2.strikeImpulseAngularSpeed,
+            strikeImpulseFrames = frv2.strikeImpulseFrames,
+            hitStunDurationPerDamage = frv2.hitStunDurationPerDamage,
+            maxHitStunDuration = frv2.maxHitStunDuration,
+            hitStunImpulsePerDamage = frv2.hitStunImpulsePerDamage,
+            maxHitStunImpulse = frv2.maxHitStunImpulse
         };
     }
 
@@ -286,6 +300,12 @@ public class FRV2Preset
         frv2.strikeDamageMultiplier = strikeDamageMultiplier;
         frv2.strikeImpactImpulse = strikeImpactImpulse;
         frv2.blockIncomingDamageMultiplier = blockIncomingDamageMultiplier;
+        frv2.strikeImpulseAngularSpeed = strikeImpulseAngularSpeed > 0.001f ? strikeImpulseAngularSpeed : 1200f;
+        frv2.strikeImpulseFrames = strikeImpulseFrames > 0 ? strikeImpulseFrames : 6;
+        frv2.hitStunDurationPerDamage = hitStunDurationPerDamage;
+        frv2.maxHitStunDuration = maxHitStunDuration > 0.001f ? maxHitStunDuration : 1.0f;
+        frv2.hitStunImpulsePerDamage = hitStunImpulsePerDamage;
+        frv2.maxHitStunImpulse = maxHitStunImpulse > 0.001f ? maxHitStunImpulse : 40f;
         Debug.Log($"[FRV2Preset] Applied preset '{presetName}' to FreezeReplayV2.");
     }
 

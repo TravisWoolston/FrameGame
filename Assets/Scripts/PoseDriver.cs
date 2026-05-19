@@ -34,8 +34,11 @@ public class PoseDriver : MonoBehaviour
     [Tooltip("Maximum motor speed. Caps how fast a joint can spin.")]
     public float maxMotorSpeed = 800f;
 
-    [Tooltip("Deadzone in degrees. Below this error, the motor relaxes. Prevents jitter at rest.")]
+    [Tooltip("Deadzone in degrees. Below this error, the motor fully disengages.")]
     public float deadzone = 0.5f;
+
+    [Tooltip("Relaxation range in degrees above the deadzone. Motor output smoothly ramps from 0 to full across this zone. Prevents vibration from constant micro-corrections.")]
+    public float motorRelaxationRange = 8f;
 
     [Tooltip("Allow this driver to chase target angles outside the driven joint's normal limits.")]
     public bool ignoreTargetJointLimits = false;
@@ -60,6 +63,16 @@ public class PoseDriver : MonoBehaviour
     [Tooltip("Temporary torque multiplier used by turn intents such as strikes.")]
     public float runtimeTorqueMultiplier = 1f;
 
+    [Header("=== Strike Impulse ===")]
+    [Tooltip("Angular velocity (deg/s) injected directly when a strike begins. PD is bypassed for strikeImpulseFrames fixed steps.")]
+    public float strikeImpulseAngularSpeed = 1200f;
+
+    [Tooltip("Fixed steps the PD motor stays disabled while the limb flies under strike impulse.")]
+    public int strikeImpulseFrames = 6;
+
+    // Runtime state for strike impulse
+    private int strikeImpulseFramesRemaining = 0;
+
     [Header("=== Airborne Compensation ===")]
     [Tooltip("Rotation delta (live root - frozen root) in degrees. Set by FRV2 during airborne sim so joints connected to the root maintain their world-space orientation.")]
     [HideInInspector]
@@ -79,11 +92,14 @@ public class PoseDriver : MonoBehaviour
     private bool hadOriginalLimits;
     private float originalMotorTorque = 150f;
     private int settlingFrames = 30; // ~0.5 sec at 50Hz physics — let figure settle before driving
+    private Rigidbody2D rb;
 
     void Start()
     {
         if (drivenJoint == null)
             drivenJoint = GetComponent<HingeJoint2D>();
+
+        rb = GetComponent<Rigidbody2D>();
 
         if (drivenJoint != null)
         {
@@ -151,6 +167,36 @@ public class PoseDriver : MonoBehaviour
             return;
         }
 
+        // Strike impulse phase: bypass PD entirely and inject angular velocity
+        // directly onto the Rigidbody2D. This produces an immediate, visible snap
+        // that doesn't depend on motor torque overcoming inertia.
+        if (strikeImpulseFramesRemaining > 0)
+        {
+            strikeImpulseFramesRemaining--;
+
+            float targetAngleImpulse = NormalizeAngle(targetJoint.jointAngle);
+            if (Mathf.Abs(airborneRootRotationOffset) > 0.01f)
+                targetAngleImpulse = NormalizeAngle(targetAngleImpulse - airborneRootRotationOffset);
+
+            float currentAngleImpulse = NormalizeAngle(drivenJoint.jointAngle);
+            float impulseError = Mathf.DeltaAngle(currentAngleImpulse, targetAngleImpulse);
+
+            // Drive both via motor AND direct angular velocity for maximum snap.
+            float direction = Mathf.Sign(impulseError);
+            JointMotor2D strikeMotor = drivenJoint.motor;
+            strikeMotor.motorSpeed = direction * strikeImpulseAngularSpeed;
+            strikeMotor.maxMotorTorque = Mathf.Max(originalMotorTorque, 150f) * runtimeTorqueMultiplier * 3f;
+            drivenJoint.motor = strikeMotor;
+            drivenJoint.useMotor = true;
+
+            // Direct angular velocity injection — bypasses torque limitations entirely.
+            if (rb != null)
+            {
+                rb.angularVelocity = direction * strikeImpulseAngularSpeed;
+            }
+            return;
+        }
+
         // Process hit reaction fadeout
         if (hitReactionTimer > 0f)
         {
@@ -185,14 +231,28 @@ public class PoseDriver : MonoBehaviour
         if (drivenJoint.useLimits && !ignoreTargetJointLimits)
             targetAngle = Mathf.Clamp(targetAngle, drivenJoint.limits.min, drivenJoint.limits.max);
         float error = Mathf.DeltaAngle(currentAngle, targetAngle);
+        float absError = Mathf.Abs(error);
 
-        // Deadzone — don't fight tiny errors (prevents jitter at rest)
-        if (Mathf.Abs(error) < deadzone)
+        // Hard deadzone — fully disengage motor at tiny errors
+        if (absError < deadzone)
         {
             JointMotor2D restMotor = drivenJoint.motor;
             restMotor.motorSpeed = 0f;
+            restMotor.maxMotorTorque = originalMotorTorque * 0.1f;
             drivenJoint.motor = restMotor;
             return;
+        }
+
+        // Smooth relaxation ramp: motor output scales from 0 at the deadzone edge
+        // to full strength at the relaxation range boundary. This prevents the
+        // constant micro-corrections that cause visible vibration.
+        float relaxationFactor = 1f;
+        float relaxUpper = deadzone + Mathf.Max(0.1f, motorRelaxationRange);
+        if (absError < relaxUpper)
+        {
+            float t = (absError - deadzone) / (relaxUpper - deadzone);
+            // Smoothstep: 3t^2 - 2t^3 for smooth acceleration
+            relaxationFactor = t * t * (3f - 2f * t);
         }
 
         // Use the joint's built-in angular speed for damping.
@@ -207,14 +267,15 @@ public class PoseDriver : MonoBehaviour
         // Runtime multipliers let strikes move faster without changing base tuning.
         // Kp and Kd multipliers apply anatomical tuning.
         // hitReactionMultiplier reduces gains and torque on collision.
-        float motorSpeed = (Kp * KpMultiplier * hitReactionMultiplier * error + damping) * speedMultiplier;
+        // relaxationFactor smoothly attenuates near the target.
+        float motorSpeed = (Kp * KpMultiplier * hitReactionMultiplier * error + damping) * speedMultiplier * relaxationFactor;
         float speedLimit = Mathf.Max(1f, maxMotorSpeed * speedMultiplier);
         motorSpeed = Mathf.Clamp(motorSpeed, -speedLimit, speedLimit);
 
-        // Apply to motor — ensure torque is high enough to move the limb
+        // Apply to motor — torque also ramps with relaxation to prevent sudden snaps
         JointMotor2D motor = drivenJoint.motor;
         motor.motorSpeed = motorSpeed;
-        motor.maxMotorTorque = Mathf.Max(originalMotorTorque, 150f) * torqueMultiplier * hitReactionMultiplier;
+        motor.maxMotorTorque = Mathf.Max(originalMotorTorque, 150f) * torqueMultiplier * hitReactionMultiplier * relaxationFactor;
         drivenJoint.motor = motor;
         drivenJoint.useMotor = true;
     }
@@ -232,6 +293,19 @@ public class PoseDriver : MonoBehaviour
         airborneRootRotationOffset = 0f;
         hitReactionMultiplier = 1f;
         hitReactionTimer = 0f;
+        strikeImpulseFramesRemaining = 0;
+    }
+
+    /// <summary>
+    /// Begins a strike impulse: disables PD for <paramref name="frames"/> fixed steps
+    /// and directly drives the joint at <paramref name="angularSpeed"/> deg/s toward
+    /// the target angle, producing a visible snap regardless of initial error magnitude.
+    /// </summary>
+    public void BeginStrikeImpulse(float angularSpeed, int frames)
+    {
+        strikeImpulseAngularSpeed = Mathf.Max(1f, angularSpeed);
+        strikeImpulseFrames = Mathf.Max(1, frames);
+        strikeImpulseFramesRemaining = strikeImpulseFrames;
     }
 
     /// <summary>

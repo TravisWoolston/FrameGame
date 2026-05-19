@@ -32,6 +32,12 @@ public class LimbMoveIntent : MonoBehaviour
     public bool IsRecovering => recoverySnapshotsRemaining > 0 && !IsActiveStrike;
     public bool CanQueueStrike => recoverySnapshotsRemaining <= 0 && !IsActiveStrike;
 
+    /// <summary>
+    /// True once this limb has connected with an enemy during the current strike.
+    /// Resets when the strike ends so each new strike gets exactly one hit event.
+    /// </summary>
+    public bool HasLandedStrikeHit { get; private set; }
+
     public float CurrentVelocityMultiplier => IsActiveStrike ? Mathf.Max(0.01f, strikeVelocityMultiplier) : 1f;
     public float OutgoingDamageMultiplier => IsActiveStrike ? Mathf.Max(0f, strikeDamageMultiplier) : 1f;
     public float OutgoingImpulse => IsActiveStrike ? Mathf.Max(0f, strikeImpactImpulse) : 0f;
@@ -85,6 +91,7 @@ public class LimbMoveIntent : MonoBehaviour
     {
         IsActiveStrike = false;
         WasActiveStrikeThisTurn = false;
+        HasLandedStrikeHit = false;
 
         if (mode == MoveMode.Auto)
             return;
@@ -97,6 +104,17 @@ public class LimbMoveIntent : MonoBehaviour
         }
 
         mode = recoverySnapshotsRemaining > 0 ? MoveMode.Recovery : MoveMode.BasicBlock;
+    }
+
+    /// <summary>
+    /// Called by ImpactDamage when this limb's strike connects with an enemy.
+    /// Returns false if the strike already landed this turn (one-hit gate).
+    /// </summary>
+    public bool TryConsumeStrikeHit()
+    {
+        if (!IsActiveStrike || HasLandedStrikeHit) return false;
+        HasLandedStrikeHit = true;
+        return true;
     }
 
     public void FinishSnapshot(int recoverySnapshotsAfterStrike)
@@ -135,6 +153,7 @@ public class LimbMoveIntent : MonoBehaviour
     {
         IsActiveStrike = false;
         WasActiveStrikeThisTurn = false;
+        HasLandedStrikeHit = false;
 
         if (recoverySnapshotsRemaining > 0)
             mode = MoveMode.Recovery;

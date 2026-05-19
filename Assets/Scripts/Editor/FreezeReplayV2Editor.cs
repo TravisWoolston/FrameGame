@@ -16,6 +16,129 @@ public class FreezeReplayV2Editor : Editor
     private static bool showOtherSerializedFields;
     private static int selectedPresetIndex = 0;
 
+    [MenuItem("FRV2/Create Built-in Presets")]
+    private static void CreateBuiltInPresets()
+    {
+        FRV2Preset dualFighter = new FRV2Preset
+        {
+            presetName = "dual_fighter",
+            description = "Two-fighter hit testing. Values match tether_jumping exactly except: ragdollDamageThreshold raised to 60 (avoid mid-preview ragdoll), walkMaxHipGroundDistance/walkMaxStrideDistance set to 0 (auto-sized per rig), and strike impulse tuned for a more visible snap.",
+            createdAt = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+
+            // === Pose Driving — from tether_jumping ===
+            poseKp = 180f,
+            poseKd = 35f,
+            poseMaxSpeed = 800f,
+            ignoreJointLimits = true,
+            limitFrozenRootMovement = false,
+            maxRootMovePerSnapshot = 2f,
+
+            // === Physics Pose Assist — from tether_jumping ===
+            enablePhysicsPoseAssist = true,
+            poseAssistOnlyRootAndUnjointedBodies = true,
+            poseAssistSpring = 85f,
+            poseAssistDamping = 25f,
+            maxPoseAssistForce = 1200f,
+            poseAssistAngularSpring = 150f,
+            poseAssistAngularDamping = 30f,
+            maxPoseAssistTorque = 1800f,
+            jumpForceMultiplier = 1.5f,
+            jumpExtensionThreshold = 0.9f,
+            // Raised vs tether_jumping (25): prevents preview loop triggering ragdoll on moderate hits
+            ragdollDamageThreshold = 60f,
+
+            // === Pose Tethers — from tether_jumping ===
+            enablePoseTethers = true,
+            poseTetherMaxDistance = 0.05f,
+            tetherShrinksOverTurn = true,
+            startingTetherDistance = 1.0f,
+            tetherBreakForce = 5000f,
+
+            // === Planted Foot — from tether_jumping ===
+            enablePlantedFootStability = true,
+            usePlantedFootJoints = true,
+            usePlantedFootSpringFallback = false,
+            plantedFootGroundTolerance = 1.2f,
+            plantedFootSpring = 120f,
+            plantedFootDamping = 0f,
+            maxPlantedFootForce = 0f,
+            plantedFootDeadzone = 0.04f,
+            plantedFootVelocityDeadzone = 0.08f,
+            plantedFootJointFrequency = 8f,
+            plantedFootJointDampingRatio = 1f,
+            plantedFootJointBreakForce = 3500f,
+            plantedFootJointBreakTorque = 1800f,
+            plantedFootDetachThreshold = 0.4f,
+            enableFootReplanting = true,
+            replantFootFrequency = 3f,
+            replantFootDamping = 0.9f,
+            replantFootMaxForce = 800f,
+            replantFootArrivalDistance = 0.15f,
+
+            // === Auto Walk — from tether_jumping, except distances set to 0 ===
+            // 0 triggers Start() to auto-calculate from each rig's anatomical leg length.
+            enableAutoWalkFromHipTarget = true,
+            useJointMotorsForAutoWalk = true,
+            reduceAutoWalkLimbForcesWhenUsingMotors = true,
+            walkMinHipTravel = 0.35f,
+            walkMaxHipGroundDistance = 0f,
+            walkMaxStrideDistance = 0f,
+            walkStepLead = 0.85f,
+            walkFootSpacing = 3.0f,
+            walkStepLift = 0.8f,
+            walkFootSpring = 0f,
+            walkFootDamping = 0f,
+            maxWalkFootForce = 0f,
+            minAutoFootSeparation = 0.85f,
+            autoKneeOutwardOffset = 0f,
+            autoCrouchKneeLift = 0.35f,
+
+            // === Auto Leg Driver — from tether_jumping ===
+            driveAutoLegsToGeneratedTargets = true,
+            skipAutoLegTargetForPlantedFeet = true,
+            driveAutoLegTargetsOnlyDuringWalk = true,
+            usePoseDriversForAutoLegs = true,
+            autoLegTargetSpring = 0f,
+            autoLegTargetDamping = 0f,
+            maxAutoLegTargetForce = 0f,
+            rotateAutoLegsTowardGeneratedTargets = false,
+            autoLegTargetAngularSpring = 0f,
+            autoLegTargetAngularDamping = 0f,
+            maxAutoLegTargetTorque = 0f,
+
+            // === Adaptive Leg — zeroed in tether_jumping ===
+            enableAdaptiveLegAssist = true,
+            useForceLegAssistWhenNotWalking = false,
+            legStepSpring = 0f,
+            legPlantForce = 0f,
+            legLiftForce = 0f,
+            maxLegAssistForce = 0f,
+
+            // === Turn — from tether_jumping ===
+            turnDuration = 1.0f,
+
+            // === Combat — slightly elevated vs tether_jumping for clearer hit reads ===
+            strikeRecoverySnapshots = 2,
+            strikeVelocityMultiplier = 2f,
+            strikeDamageMultiplier = 1.8f,
+            strikeImpactImpulse = 10f,
+            blockIncomingDamageMultiplier = 0.75f,
+
+            // === Strike Impulse — tuned for visible snap across both fighters ===
+            strikeImpulseAngularSpeed = 1400f,
+            strikeImpulseFrames = 8,
+
+            // === Hit Stun — unplant + local tethers + impulse on strike impact ===
+            hitStunDurationPerDamage = 0.08f,
+            maxHitStunDuration = 1.0f,
+            hitStunImpulsePerDamage = 3f,
+            maxHitStunImpulse = 40f,
+        };
+        dualFighter.SaveToFile();
+        Debug.Log("[FRV2Editor] Created preset 'dual_fighter'.");
+        AssetDatabase.Refresh();
+    }
+
     public override void OnInspectorGUI()
     {
         serializedObject.Update();
@@ -45,8 +168,13 @@ public class FreezeReplayV2Editor : Editor
 
         DrawSection(drawn, "Frozen Copy Editing",
             "ignoreJointLimits",
+            "enableEditInput",
             "limitFrozenRootMovement",
             "maxRootMovePerSnapshot");
+
+        DrawSection(drawn, "Master / Slave",
+            "isMasterFRV2",
+            "masterFRV2");
 
         DrawSection(drawn, "Low-Force Movement",
             "enablePhysicsPoseAssist",
@@ -65,7 +193,9 @@ public class FreezeReplayV2Editor : Editor
             "moveUIStartMinimized",
             "defaultLegsToAuto",
             "strikeRecoverySnapshots",
-            "strikeVelocityMultiplier");
+            "strikeVelocityMultiplier",
+            "strikeImpulseAngularSpeed",
+            "strikeImpulseFrames");
 
         DrawSection(drawn, "Safety",
             "validateRigOnStart",
@@ -165,7 +295,11 @@ public class FreezeReplayV2Editor : Editor
             "strikeDamageMultiplier",
             "strikeImpactImpulse",
             "blockIncomingDamageMultiplier",
-            "ragdollDamageThreshold");
+            "ragdollDamageThreshold",
+            "hitStunDurationPerDamage",
+            "maxHitStunDuration",
+            "hitStunImpulsePerDamage",
+            "maxHitStunImpulse");
 
         DrawAdvancedSection(ref showRigAdvanced, drawn, "Advanced Rig Diagnostics",
             "logRigValidationDetails");
@@ -280,6 +414,19 @@ public class FreezeReplayV2Editor : Editor
                 serializedObject.FindProperty("autoLoadPresetName").stringValue = presetNames[selectedPresetIndex];
             }
             EditorGUILayout.EndHorizontal();
+
+            if (GUILayout.Button("Broadcast Preset To All FRV2s In Scene"))
+            {
+                FreezeReplayV2[] all = Object.FindObjectsByType<FreezeReplayV2>(FindObjectsSortMode.None);
+                foreach (FreezeReplayV2 frv2 in all)
+                {
+                    Undo.RecordObject(frv2, "Broadcast FRV2 Preset");
+                    frv2.LoadPreset(presetNames[selectedPresetIndex]);
+                    EditorUtility.SetDirty(frv2);
+                }
+                serializedObject.Update();
+                Debug.Log($"[FRV2Editor] Broadcast preset '{presetNames[selectedPresetIndex]}' to {all.Length} FRV2 instance(s).");
+            }
         }
         else
         {

@@ -282,6 +282,339 @@ MonoBehaviour:
   armKpMultiplier: 1.5
   legKpMultiplier: 3
   freezeReplay: {fileID: 138340146}
+--- !u!1 &155733760
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 155733766}
+  - component: {fileID: 155733765}
+  - component: {fileID: 155733764}
+  - component: {fileID: 155733763}
+  - component: {fileID: 155733762}
+  - component: {fileID: 155733761}
+  m_Layer: 0
+  m_Name: FR2 (1)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &155733761
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 155733760}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2938020949346564c9562004e57c1373, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FRV2Diagnostics
+  reportKey: 289
+  generatePresetKey: 290
+  autoReportInterval: 5
+  logSuggestionsToConsole: 0
+  autoGeneratePresetWithReport: 0
+--- !u!114 &155733762
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 155733760}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 810e2d8b4488b9d44bbd7851709a5bb8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FreezeReplayV2
+  playerPrefab: {fileID: 3925811490408253655, guid: fd2e4dd0602c4b440beb06d8b263a521, type: 3}
+  frozenCopyColor: {r: 0.3, g: 1, b: 0.6, a: 0.5}
+  limitFrozenRootMovement: 0
+  maxRootMovePerSnapshot: 2
+  turnDuration: 1
+  commitKey: 32
+  replayKey: 114
+  resetKey: 113
+  enableHealthSnapshots: 1
+  replayOnCapture: 0
+  syncReplayToFixedStep: 1
+  skipDuplicateReplayFrames: 1
+  duplicateReplayPositionTolerance: 0.0005
+  duplicateReplayRotationTolerance: 0.05
+  spawnOffset: {x: 0, y: -18}
+  snapRuntimeRigFeetToGround: 1
+  spawnGroundProbeHeight: 12
+  spawnGroundProbeDistance: 40
+  spawnGroundClearance: 0.03
+  centerMainCameraOnSnapshotStart: 0
+  poseKp: 180
+  poseKd: 35
+  poseMaxSpeed: 800
+  ignoreJointLimits: 1
+  enableEditInput: 0
+  enablePhysicsPoseAssist: 1
+  poseAssistOnlyRootAndUnjointedBodies: 1
+  enablePoseTethers: 1
+  poseTetherMaxDistance: 0.05
+  tetherShrinksOverTurn: 1
+  startingTetherDistance: 1
+  tetherBreakForce: 5000
+  poseAssistSpring: 85
+  poseAssistDamping: 25
+  maxPoseAssistForce: 1200
+  poseAssistAngularSpring: 150
+  poseAssistAngularDamping: 30
+  maxPoseAssistTorque: 1800
+  airborneAngularSpringMultiplier: 4
+  enableAdaptiveLegAssist: 1
+  groundMask:
+    serializedVersion: 2
+    m_Bits: 8
+  minStepDistance: 0.35
+  groundProbeHeight: 3
+  groundProbeDistance: 6
+  footGroundOffset: 0.15
+  fallbackGroundProbeToAllLayers: 1
+  preventFrozenCopyGroundPenetration: 1
+  frozenCopyGroundClearance: 0.01
+  legStepSpring: 0
+  legPlantForce: 0
+  legLiftForce: 0
+  maxLegAssistForce: 0
+  useForceLegAssistWhenNotWalking: 0
+  enablePlantedFootStability: 1
+  usePlantedFootJoints: 1
+  usePlantedFootSpringFallback: 0
+  plantedFootGroundTolerance: 1.2
+  plantedFootSpring: 120
+  plantedFootDamping: 0
+  maxPlantedFootForce: 0
+  plantedFootDeadzone: 0.04
+  plantedFootVelocityDeadzone: 0.08
+  plantedFootJointFrequency: 8
+  plantedFootJointDampingRatio: 1
+  plantedFootJointBreakForce: 3500
+  plantedFootJointBreakTorque: 1800
+  plantedFootDetachThreshold: 0.4
+  enableFootReplanting: 1
+  replantFootFrequency: 3
+  replantFootDamping: 0.9
+  replantFootMaxForce: 800
+  replantFootArrivalDistance: 0.15
+  logFootReplantingDetails: 0
+  jumpForceMultiplier: 1.5
+  jumpExtensionThreshold: 0.9
+  forceAirborneMode: 0
+  isJumpNextSimulation: 0
+  jumpTriggerArmed: 0
+  ragdollDamageThreshold: 1
+  isRagdolled: 0
+  hitStunDurationPerDamage: 0.08
+  maxHitStunDuration: 1
+  hitStunImpulsePerDamage: 3
+  maxHitStunImpulse: 40
+  enablePosePreviewLoop: 1
+  disableDamageDuringPreview: 1
+  previewLoopDuration: 1
+  isMasterFRV2: 0
+  masterFRV2: {fileID: 1633812807}
+  enableAutoWalkFromHipTarget: 1
+  walkMinHipTravel: 0.35
+  walkMaxHipGroundDistance: 0
+  walkMaxStrideDistance: 0
+  walkStepLead: 0.85
+  walkFootSpacing: 3
+  walkStepLift: 0.8
+  walkFootSpring: 0
+  walkFootDamping: 0
+  maxWalkFootForce: 0
+  minAutoFootSeparation: 0.85
+  autoKneeOutwardOffset: 0
+  autoCrouchKneeLift: 0.35
+  rotateFrozenAutoLegsToGeneratedTargets: 1
+  driveAutoLegsToGeneratedTargets: 1
+  useJointMotorsForAutoWalk: 1
+  reduceAutoWalkLimbForcesWhenUsingMotors: 1
+  skipAutoLegTargetForPlantedFeet: 1
+  driveAutoLegTargetsOnlyDuringWalk: 1
+  usePoseDriversForAutoLegs: 1
+  autoLegTargetSpring: 0
+  autoLegTargetDamping: 0
+  maxAutoLegTargetForce: 0
+  rotateAutoLegsTowardGeneratedTargets: 0
+  autoLegTargetAngularSpring: 0
+  autoLegTargetAngularDamping: 0
+  maxAutoLegTargetTorque: 0
+  showMovePlanningUI: 1
+  tintFrozenLimbsByIntent: 1
+  defaultLegsToAuto: 1
+  moveUIPanelOffset: {x: -4, y: -18}
+  moveUIPanelWidth: 460
+  moveUIStartMinimized: 1
+  moveUIMinimizedWidth: 230
+  moveUIMinimizedHeight: 42
+  strikeRecoverySnapshots: 2
+  strikeVelocityMultiplier: 2
+  strikeDamageMultiplier: 1.8
+  strikeImpactImpulse: 10
+  blockIncomingDamageMultiplier: 0.75
+  strikeImpulseAngularSpeed: 1400
+  strikeImpulseFrames: 8
+  validateRigOnStart: 1
+  logRigValidationDetails: 1
+  disableLegacyMotorControllers: 1
+  currentPhase: 0
+  turnCount: 43
+  resetCopyKey: 99
+  playerObj: {fileID: 0}
+  frozenCopy: {fileID: 0}
+  trackedBodies:
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  autoLoadPresetName: 
+--- !u!114 &155733763
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 155733760}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7f6f9221f7b94c61a3f67d55710e5c2b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FighterRuntimeRigBuilder
+  buildOnAwake: 0
+  rebuildExistingGeneratedRig: 1
+  hideAuthorMarkersOnBuild: 1
+  generatedRootName: _GeneratedRig
+  addCombatComponents: 1
+  addHealthComponent: 1
+  addLimbMoveIntents: 1
+  ignoreSelfCollisions: 1
+  bodyColor: {r: 1, g: 1, b: 1, a: 1}
+  headColor: {r: 1, g: 1, b: 1, a: 1}
+  limbThickness: 0.5
+  coreThickness: 0.5
+  jointRadius: 0.5
+  headRadius: 1
+  handRadius: 0.5
+  footRadius: 1
+  footLength: 0.45
+  footThickness: 0.5
+  bodySortingOrder: 5
+  jointSortingOrder: 8
+  gravityScale: 1
+  linearDamping: 0.5
+  angularDamping: 5
+  defaultMotorTorque: 250
+  coreMass: 4
+  spineMass: 3
+  headMass: 0.8
+  upperLimbMass: 0.8
+  lowerLimbMass: 0.55
+  handFootMass: 0.35
+  bodyFriction: 0.45
+  footFriction: 1.2
+  physicsBounciness: 0
+--- !u!114 &155733764
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 155733760}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 58bd8edbcad8f2a4f84de9c1e74a74fa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SmartPoser
+  enableSmartPosing: 1
+  showDragLine: 1
+  showHoverHighlight: 1
+  showTargetIndicator: 1
+  dragForce: 500
+  dampingRatio: 1
+  frequency: 5
+  clickRadius: 1.5
+  rootFallbackSelectionRadius: 1.75
+  limitDraggedLimbMotion: 0
+  maxLimbAdjustment: 1.4
+  jointReachPadding: 0.25
+  anchorRootWhileDragging: 1
+  anchorParentWhileDragging: 0
+  anchorPlantedFeetWhileDragging: 1
+  rootAnchorForce: 2500
+  parentAnchorForce: 1800
+  plantedFootAnchorForce: 2200
+  anchoredFootGroundTolerance: 0.35
+  anchorDampingRatio: 1
+  anchorFrequency: 8
+  freezeReplay: {fileID: 0}
+  freezeReplayV2: {fileID: 0}
+--- !u!114 &155733765
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 155733760}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 41e4b733ea2a07041acf403be0f2cffb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PoseDriver
+  enablePoseDriver: 1
+  showDebugGizmo: 1
+  Kp: 5000
+  Kd: 8
+  maxMotorSpeed: 800
+  deadzone: 0.5
+  motorRelaxationRange: 8
+  ignoreTargetJointLimits: 1
+  KpMultiplier: 1
+  KdMultiplier: 1
+  hitReactionMultiplier: 1
+  runtimeSpeedMultiplier: 1
+  runtimeTorqueMultiplier: 1
+  strikeImpulseAngularSpeed: 1200
+  strikeImpulseFrames: 6
+  airborneRootRotationOffset: 0
+  drivenJoint: {fileID: 0}
+  targetJoint: {fileID: 0}
+--- !u!4 &155733766
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 155733760}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 23.1, y: -15.5, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &324229011
 GameObject:
   m_ObjectHideFlags: 0
@@ -1216,7 +1549,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1633812802}
-  - component: {fileID: 1633812803}
   - component: {fileID: 1633812805}
   - component: {fileID: 1633812806}
   - component: {fileID: 1633812807}
@@ -1237,36 +1569,12 @@ Transform:
   m_GameObject: {fileID: 1633812800}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 20.53977, y: -15.5, z: 0}
+  m_LocalPosition: {x: 8.3, y: -15.5, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1633812803
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1633812800}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 41e4b733ea2a07041acf403be0f2cffb, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PoseDriver
-  enablePoseDriver: 1
-  showDebugGizmo: 1
-  Kp: 5000
-  Kd: 8
-  maxMotorSpeed: 800
-  deadzone: 0.5
-  ignoreTargetJointLimits: 1
-  runtimeSpeedMultiplier: 1
-  runtimeTorqueMultiplier: 1
-  airborneRootRotationOffset: 0
-  drivenJoint: {fileID: 0}
-  targetJoint: {fileID: 0}
 --- !u!114 &1633812805
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1363,7 +1671,7 @@ MonoBehaviour:
   frozenCopyColor: {r: 0.3, g: 1, b: 0.6, a: 0.5}
   limitFrozenRootMovement: 0
   maxRootMovePerSnapshot: 2
-  turnDuration: 0.5
+  turnDuration: 1
   commitKey: 32
   replayKey: 114
   resetKey: 113
@@ -1383,7 +1691,8 @@ MonoBehaviour:
   poseKd: 35
   poseMaxSpeed: 800
   ignoreJointLimits: 1
-  enablePhysicsPoseAssist: 0
+  enableEditInput: 1
+  enablePhysicsPoseAssist: 1
   poseAssistOnlyRootAndUnjointedBodies: 1
   enablePoseTethers: 1
   poseTetherMaxDistance: 0.05
@@ -1433,18 +1742,26 @@ MonoBehaviour:
   replantFootMaxForce: 800
   replantFootArrivalDistance: 0.15
   logFootReplantingDetails: 0
-  jumpForceMultiplier: 5
-  jumpExtensionThreshold: 0.8
+  jumpForceMultiplier: 1.5
+  jumpExtensionThreshold: 0.9
   forceAirborneMode: 0
   isJumpNextSimulation: 0
   jumpTriggerArmed: 0
-  enablePosePreviewLoop: 0
+  ragdollDamageThreshold: 60
+  isRagdolled: 0
+  hitStunDurationPerDamage: 0.08
+  maxHitStunDuration: 1
+  hitStunImpulsePerDamage: 3
+  maxHitStunImpulse: 40
+  enablePosePreviewLoop: 1
   disableDamageDuringPreview: 1
-  previewLoopDuration: 0.5
+  previewLoopDuration: 1
+  isMasterFRV2: 1
+  masterFRV2: {fileID: 0}
   enableAutoWalkFromHipTarget: 1
   walkMinHipTravel: 0.35
-  walkMaxHipGroundDistance: 6.357
-  walkMaxStrideDistance: 10
+  walkMaxHipGroundDistance: 0
+  walkMaxStrideDistance: 0
   walkStepLead: 0.85
   walkFootSpacing: 3
   walkStepLift: 0.8
@@ -1478,9 +1795,11 @@ MonoBehaviour:
   moveUIMinimizedHeight: 42
   strikeRecoverySnapshots: 2
   strikeVelocityMultiplier: 2
-  strikeDamageMultiplier: 1.5
-  strikeImpactImpulse: 8
+  strikeDamageMultiplier: 1.8
+  strikeImpactImpulse: 1000
   blockIncomingDamageMultiplier: 0.75
+  strikeImpulseAngularSpeed: 1400
+  strikeImpulseFrames: 8
   validateRigOnStart: 1
   logRigValidationDetails: 1
   disableLegacyMotorControllers: 1
@@ -2282,3 +2601,4 @@ SceneRoots:
   - {fileID: 389374145}
   - {fileID: 658201141}
   - {fileID: 1633812802}
+  - {fileID: 155733766}

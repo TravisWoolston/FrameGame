@@ -98,6 +98,9 @@ public class FreezeReplayV2 : MonoBehaviour
     [Tooltip("Temporarily disables HingeJoint2D limits on live and frozen bodies and skips pose target clamping.")]
     public bool ignoreJointLimits = false;
 
+    [Tooltip("When disabled, SmartPoser ignores all mouse input for this fighter. Useful when testing two fighters simultaneously — enable only the one you want to edit.")]
+    public bool enableEditInput = true;
+
     [Header("=== Physics / IK Assist ===")]
     [Tooltip("Adds soft Rigidbody2D forces toward the frozen copy so motors are not the only driver.")]
     public bool enablePhysicsPoseAssist = true;
@@ -208,10 +211,33 @@ public class FreezeReplayV2 : MonoBehaviour
     private Dictionary<Collider2D, PhysicsMaterial2D> originalMaterials = new Dictionary<Collider2D, PhysicsMaterial2D>();
     private PhysicsMaterial2D ragdollMaterial;
 
+    [Header("=== Hit Stun ===")]
+    [Tooltip("Seconds of hit stun applied per point of damage. During stun the fighter is unplanted, tethers switch to local space, and an impulse pushes the root body.")]
+    public float hitStunDurationPerDamage = 0.08f;
+
+    [Tooltip("Maximum hit stun duration in seconds, regardless of damage.")]
+    public float maxHitStunDuration = 1.0f;
+
+    [Tooltip("Impulse force applied to the root body per point of damage on hit.")]
+    public float hitStunImpulsePerDamage = 3f;
+
+    [Tooltip("Maximum impulse magnitude applied to root on any single hit.")]
+    public float maxHitStunImpulse = 40f;
+
     [Header("=== Posing Preview Loop ===")]
     public bool enablePosePreviewLoop = true;
     public bool disableDamageDuringPreview = true;
     public float previewLoopDuration = 0f;
+
+    [Header("=== Master / Slave ===")]
+    [Tooltip("When true, this FRV2 drives the shared preview restart clock and accepts commit/replay key input. All slave FRV2s registered to this master sync their preview timing to it.")]
+    public bool isMasterFRV2 = true;
+
+    [Tooltip("The master FRV2 that drives this instance's preview timing. Leave null if this is the master or standalone.")]
+    public FreezeReplayV2 masterFRV2 = null;
+
+    // Slaves self-register here at Start so the master can broadcast restarts.
+    private readonly List<FreezeReplayV2> registeredSlaves = new List<FreezeReplayV2>();
 
     [Header("=== Auto Walk From Hips ===")]
     public bool enableAutoWalkFromHipTarget = true;
@@ -280,6 +306,12 @@ public class FreezeReplayV2 : MonoBehaviour
     public float strikeDamageMultiplier = 1.5f;
     public float strikeImpactImpulse = 8f;
     public float blockIncomingDamageMultiplier = 0.75f;
+
+    [Tooltip("Angular speed (deg/s) injected directly into strike limb joints for the first strikeImpulseFrames fixed steps. Bypasses PD entirely so the snap is visible regardless of error magnitude.")]
+    public float strikeImpulseAngularSpeed = 1200f;
+
+    [Tooltip("Number of fixed steps the PD motor is bypassed during a strike impulse. Increase for a longer, more exaggerated snap.")]
+    public int strikeImpulseFrames = 6;
 
     [Header("=== Rig Validation / Conflicts ===")]
     public bool validateRigOnStart = true;
@@ -400,6 +432,13 @@ public class FreezeReplayV2 : MonoBehaviour
     // Used to protect landing foot joints from being cleared, and to switch legs back to Auto on the next turn.
     private bool hasLandedThisTurn = false;
 
+    // === Hit Stagger State ===
+    // Accumulated stagger offset applied to all frozen copy targets so tethers
+    // and pose assist pull the live fighter in the hit direction.
+    private float hitStunTimer = 0f;
+    private bool isHitStunActive = false;
+    private bool hitStunLocalTethers = false;
+
     // ===== LIFECYCLE =====
 
     void Start()
@@ -476,6 +515,11 @@ public class FreezeReplayV2 : MonoBehaviour
 
         // Explicitly force live fighter limbs to collide (bypassing any accidental layer overrides)
         EnableCrossFighterCollisions();
+
+        // Slave self-registration: find and register with the master after both have initialised.
+        // Uses a one-frame delay so all FRV2 Start()s have run before we query FindObjectsByType.
+        if (!isMasterFRV2)
+            StartCoroutine(RegisterWithMaster());
     }
 
     void Update()
@@ -567,6 +611,9 @@ public class FreezeReplayV2 : MonoBehaviour
             ClearPoseTethers();
         }
 
+        // Tick down hit stun timer so feet can eventually replant.
+        TickHitStun();
+
         if (jumpTriggerArmed && !hasJumpTriggered)
         {
             CheckJumpTrigger();
@@ -611,15 +658,20 @@ public class FreezeReplayV2 : MonoBehaviour
         ShowFrozenCopy();
         RefreshFrozenIntentTints();
 
-        if (Input.GetKeyDown(commitKey))
+        // Slaves do not accept commit/replay key input — master drives timing.
+        bool acceptsInput = isMasterFRV2 || masterFRV2 == null;
+
+        if (acceptsInput && Input.GetKeyDown(commitKey))
         {
             CommitPose();
+            BroadcastCommitToSlaves();
             return;
         }
 
-        if (Input.GetKeyDown(replayKey))
+        if (acceptsInput && Input.GetKeyDown(replayKey))
         {
             StopPosePreviewLoop(true, true);
+            BroadcastReplayToSlaves();
             StartCoroutine(PlayReplayThenResume());
             return;
         }
@@ -681,7 +733,7 @@ public class FreezeReplayV2 : MonoBehaviour
     /// <summary>
     /// Lock in the current frozen copy pose and start simulation.
     /// </summary>
-    private void CommitPose()
+    public void CommitPose()
     {
         StopPosePreviewLoop(true, true);
         StabilizeFrozenCopyPose();
@@ -757,6 +809,13 @@ public class FreezeReplayV2 : MonoBehaviour
     {
         if (currentSnapshot == null) return;
 
+        // Destroy any stale tether joints left over from a committed simulation
+        // or a previous preview loop. Without this, tethers configured in local-space
+        // mode during hit stun survive into the new loop and pull limbs toward the
+        // root origin (hands-on-floor effect).
+        ClearPoseTethers();
+        ClearHitStun();
+
         Dictionary<Rigidbody2D, FrozenRootEditPose> authoredFrozenPose = CaptureFrozenCopyPose();
 
         // Preview simulation is read-only with respect to the authored frozen copy.
@@ -789,6 +848,8 @@ public class FreezeReplayV2 : MonoBehaviour
     private void RestartPosePreviewLoop()
     {
         ResetLimbRuntimeAfterPreview();
+        ClearHitStun();
+        ClearPoseTethers();
         plantedFootTargets.Clear();
         autoWalkActive = false;
         autoWalkSwingFoot = null;
@@ -808,6 +869,7 @@ public class FreezeReplayV2 : MonoBehaviour
             return;
 
         ResetLimbRuntimeAfterPreview();
+        ClearHitStun();
         ClearPoseTethers();
         plantedFootTargets.Clear();
         autoWalkActive = false;
@@ -891,6 +953,11 @@ public class FreezeReplayV2 : MonoBehaviour
 
         if (currentPhase == TurnPhase.Posing)
             ShowFrozenCopy();
+
+        // If this is the master, broadcast the restart to all registered slaves
+        // so every fighter resets at the same time.
+        if (isMasterFRV2)
+            BroadcastPreviewRestartToSlaves();
     }
 
     private void SetPreviewDamageEnabled(bool enabled)
@@ -964,6 +1031,9 @@ public class FreezeReplayV2 : MonoBehaviour
         {
             fighterHealth.RestoreHP();
         }
+
+        // Clear any accumulated hit stun from the previous simulation cycle.
+        ClearHitStun();
     }
 
     // ===== SNAPSHOT =====
@@ -1072,13 +1142,18 @@ public class FreezeReplayV2 : MonoBehaviour
     /// <summary>
     /// Play the full recorded sequence, then resume posing.
     /// </summary>
-    private IEnumerator PlayReplayThenResume()
+    public IEnumerator PlayReplayThenResume()
     {
         if (replayFrames.Count == 0)
         {
             Debug.Log("[FreezeReplayV2] No frames recorded yet.");
             yield break;
         }
+
+        // Reset health bar to committed HP before replay so the bar is clean
+        // (clears any lingering preview-damage yellow segment).
+        if (enableHealthSnapshots && fighterHealth != null)
+            fighterHealth.RestoreHP();
 
         // Pause normal update
         isPlayingReplay = true;
@@ -1727,9 +1802,20 @@ public class FreezeReplayV2 : MonoBehaviour
             float velocityMultiplier = plan.intent.CurrentVelocityMultiplier;
             if (plan.poseDriver != null)
             {
-                // Give strikes an extra torque boost to overcome inertia and accelerate instantly
-                float torqueMultiplier = plan.intent.IsActiveStrike ? velocityMultiplier * 1.5f : velocityMultiplier;
-                plan.poseDriver.SetRuntimeMultipliers(velocityMultiplier, torqueMultiplier);
+                if (plan.intent.IsActiveStrike)
+                {
+                    // Bypass PD entirely for the first strikeImpulseFrames steps.
+                    // The limb snaps toward its target at full angular speed — visually
+                    // distinct from basic movement regardless of initial joint error.
+                    plan.poseDriver.BeginStrikeImpulse(strikeImpulseAngularSpeed, strikeImpulseFrames);
+                    // Keep torque multiplier elevated so PD re-engagement after the
+                    // impulse holds the extended pose firmly.
+                    plan.poseDriver.SetRuntimeMultipliers(velocityMultiplier, velocityMultiplier * 1.5f);
+                }
+                else
+                {
+                    plan.poseDriver.SetRuntimeMultipliers(velocityMultiplier, velocityMultiplier);
+                }
             }
         }
 
@@ -1843,6 +1929,18 @@ public class FreezeReplayV2 : MonoBehaviour
     {
         if (!enablePhysicsPoseAssist || frozenChildren == null) return;
 
+        Rigidbody2D rootRb = (rootBodyIndex >= 0 && rootBodyIndex < trackedBodies.Count)
+            ? trackedBodies[rootBodyIndex] : null;
+
+        // When tethers are in local space (hit stun or airborne), compute the offset
+        // between the live root and frozen root so pose assist targets move with the body
+        // instead of pulling it back toward the frozen copy world position.
+        Vector2 localSpaceOffset = Vector2.zero;
+        if (hitStunLocalTethers && rootRb != null && rootBodyIndex < frozenChildren.Length && frozenChildren[rootBodyIndex] != null)
+        {
+            localSpaceOffset = rootRb.position - (Vector2)frozenChildren[rootBodyIndex].position;
+        }
+
         int count = Mathf.Min(trackedBodies.Count, frozenChildren.Length);
         for (int i = 0; i < count; i++)
         {
@@ -1852,8 +1950,12 @@ public class FreezeReplayV2 : MonoBehaviour
             if (IsAutoLegBody(rb)) continue;
             if (poseAssistOnlyRootAndUnjointedBodies && rb.GetComponent<HingeJoint2D>() != null) continue;
 
+            // During active hit stun, skip leg limbs — let them swing freely
+            if (isHitStunActive && IsLegLimb(rb.name)) continue;
+
             float multiplier = GetIntentVelocityMultiplier(i);
-            Vector2 positionError = (Vector2)target.position - rb.position;
+            Vector2 targetPos = (Vector2)target.position + localSpaceOffset;
+            Vector2 positionError = targetPos - rb.position;
             Vector2 force = positionError * (poseAssistSpring * multiplier) - rb.linearVelocity * poseAssistDamping;
             
             float angularMult = multiplier;
@@ -1866,6 +1968,73 @@ public class FreezeReplayV2 : MonoBehaviour
                 - rb.angularVelocity * poseAssistAngularDamping;
             rb.AddTorque(Mathf.Clamp(torque, -maxPoseAssistTorque * angularMult, maxPoseAssistTorque * angularMult), ForceMode2D.Force);
         }
+    }
+
+    // ===== HIT STUN =====
+
+    /// <summary>
+    /// Called by ImpactDamage when this fighter is struck. Unplants feet,
+    /// switches tethers to root-relative local space, and applies a physics
+    /// impulse to the root body. The frozen copy is never modified.
+    /// </summary>
+    public void ApplyHitStun(Vector2 hitDirection, float damage)
+    {
+        if (hitDirection.sqrMagnitude < 0.001f || damage < 0.001f) return;
+
+        float stunDuration = Mathf.Min(damage * hitStunDurationPerDamage, maxHitStunDuration);
+        hitStunTimer = Mathf.Max(hitStunTimer, stunDuration);
+
+        if (!isHitStunActive)
+        {
+            isHitStunActive = true;
+            hitStunLocalTethers = true;
+
+            // Unplant all feet — remove anchors so the body can slide
+            ClearPlantedFootJoints();
+            plantedFootTargets.Clear();
+            ClearReplantingFootJoints();
+
+            // Destroy world-space tethers; they will be recreated in local mode next frame
+            ClearPoseTethers();
+        }
+
+        // Apply impulse to root body
+        Rigidbody2D rootRb = (rootBodyIndex >= 0 && rootBodyIndex < trackedBodies.Count)
+            ? trackedBodies[rootBodyIndex] : null;
+        if (rootRb != null)
+        {
+            float impulseMag = Mathf.Min(damage * hitStunImpulsePerDamage, maxHitStunImpulse);
+            rootRb.AddForce(hitDirection.normalized * impulseMag, ForceMode2D.Impulse);
+        }
+    }
+
+    /// <summary>
+    /// Ticks down the hit stun timer each fixed step.
+    /// When the timer expires, stun ends and feet are allowed to replant.
+    /// Local-space tethers remain active until the simulation resets.
+    /// </summary>
+    private void TickHitStun()
+    {
+        if (!isHitStunActive) return;
+
+        hitStunTimer -= Time.fixedDeltaTime;
+        if (hitStunTimer <= 0f)
+        {
+            hitStunTimer = 0f;
+            isHitStunActive = false;
+            // hitStunLocalTethers stays true — body has moved, frozen copy hasn't.
+            // Tethers stay local for the rest of this simulation/preview cycle.
+        }
+    }
+
+    /// <summary>
+    /// Clears all hit stun state. Called on preview restart and snapshot restore.
+    /// </summary>
+    private void ClearHitStun()
+    {
+        hitStunTimer = 0f;
+        isHitStunActive = false;
+        hitStunLocalTethers = false;
     }
 
     /// <summary>
@@ -1901,6 +2070,7 @@ public class FreezeReplayV2 : MonoBehaviour
         if (!enablePoseTethers || frozenChildren == null) return;
 
         bool isAirborne = forceAirborneMode || isJumpNextSimulation;
+        bool useLocalSpace = isAirborne || hitStunLocalTethers;
         bool isStarting = poseTetherJoints.Count == 0 && GetActiveSimulationDuration() > 0.001f;
         
         Rigidbody2D rootRb = (rootBodyIndex >= 0 && rootBodyIndex < trackedBodies.Count) ? trackedBodies[rootBodyIndex] : null;
@@ -1926,6 +2096,19 @@ public class FreezeReplayV2 : MonoBehaviour
             if (plan != null && plan.intent != null && plan.intent.IsActiveStrike)
             {
                 // If a tether was already created, destroy it
+                if (poseTetherJoints.TryGetValue(rb, out DistanceJoint2D existing))
+                {
+                    existing.enabled = false;
+                    Destroy(existing);
+                    poseTetherJoints.Remove(rb);
+                }
+                continue;
+            }
+
+            // During active hit stun, skip tethers on leg limbs so they dangle freely
+            // from the joint chain — this produces the "drunken stumbling" effect.
+            if (isHitStunActive && IsLegLimb(rb.name))
+            {
                 if (poseTetherJoints.TryGetValue(rb, out DistanceJoint2D existing))
                 {
                     existing.enabled = false;
@@ -1977,11 +2160,11 @@ public class FreezeReplayV2 : MonoBehaviour
                 tether.maxDistanceOnly = true;
                 tether.breakForce = tetherBreakForce;
 
-                if (isAirborne && rootRb != null)
+                if (useLocalSpace && rootRb != null)
                 {
-                    // LOCAL SPACE TETHER: Tether limbs to the root instead of the world
+                    // LOCAL SPACE TETHER: Tether limbs to the root instead of the world.
+                    // Used during airborne mode AND hit stun so the body can translate freely.
                     tether.connectedBody = rootRb;
-                    // Position relative to root
                     Transform frozenRoot = GetFrozenRootTransform();
                     if (frozenRoot != null)
                     {
@@ -2007,8 +2190,8 @@ public class FreezeReplayV2 : MonoBehaviour
             }
             else if (poseTetherJoints.TryGetValue(rb, out DistanceJoint2D tether) && tether != null)
             {
-                // Update world target if not airborne (airborne local targets stay static relative to root)
-                if (!isAirborne)
+                // Update world target only when using world-space tethers
+                if (!useLocalSpace)
                 {
                     tether.connectedAnchor = target.position;
                 }
@@ -2774,6 +2957,7 @@ public class FreezeReplayV2 : MonoBehaviour
     private void CheckReplantingFootArrival()
     {
         if (replantingFootJoints.Count == 0) return;
+        if (isHitStunActive) return; // No replanting during stun
 
         List<Rigidbody2D> arrived = null;
 
@@ -2856,6 +3040,7 @@ public class FreezeReplayV2 : MonoBehaviour
     private void ApplyPlantedFootStability()
     {
         if (!enablePlantedFootStability || plantedFootTargets.Count == 0) return;
+        if (isHitStunActive) return; // No foot anchoring during stun
 
         foreach (var kvp in plantedFootTargets)
         {
@@ -2887,6 +3072,7 @@ public class FreezeReplayV2 : MonoBehaviour
     {
         ClearPlantedFootJoints();
         if (!enablePlantedFootStability || !usePlantedFootJoints) return;
+        if (isHitStunActive) return; // No foot anchoring during stun
 
         foreach (var kvp in plantedFootTargets)
         {
@@ -3332,6 +3518,7 @@ public class FreezeReplayV2 : MonoBehaviour
     /// </summary>
     private void CheckAirborneLanding()
     {
+        if (isHitStunActive) return; // No landing anchors during stun
         if (trackedBodies == null || limbPlans == null) return;
         if (rootBodyIndex < 0 || rootBodyIndex >= trackedBodies.Count) return;
 
@@ -3987,6 +4174,7 @@ public class FreezeReplayV2 : MonoBehaviour
     /// </summary>
     private void HideFrozenCopy()
     {
+        if (frozenCopy == null) return;
         SetFrozenCopyCollidersEnabled(false);
         foreach (var r in frozenCopy.GetComponentsInChildren<Renderer>(true))
             r.enabled = false;
@@ -3997,6 +4185,7 @@ public class FreezeReplayV2 : MonoBehaviour
     /// </summary>
     private void ShowFrozenCopy()
     {
+        if (frozenCopy == null) return;
         frozenCopy.SetActive(true); // Ensure active
         SetFrozenCopyBodyType(frozenPhysicsPoseEditActive ? RigidbodyType2D.Dynamic : RigidbodyType2D.Kinematic);
         SetFrozenCopyCollidersEnabled(true);
@@ -4753,6 +4942,109 @@ public class FreezeReplayV2 : MonoBehaviour
         Debug.Log($"[FreezeReplayV2] Auto-loaded preset '{autoLoadPresetName}'.");
     }
 
+    // ===== MASTER / SLAVE SYSTEM =====
+
+    /// <summary>
+    /// One-frame-delayed registration so all FRV2 Start() calls finish first.
+    /// </summary>
+    private System.Collections.IEnumerator RegisterWithMaster()
+    {
+        // Retry for up to 5 frames so initialization order doesn't matter.
+        const int maxRetries = 5;
+        for (int attempt = 0; attempt < maxRetries; attempt++)
+        {
+            yield return null;
+
+            // Prefer an explicitly assigned master; otherwise scan the scene.
+            if (masterFRV2 == null)
+            {
+                FreezeReplayV2[] all = FindObjectsByType<FreezeReplayV2>(FindObjectsSortMode.None);
+                foreach (FreezeReplayV2 frv2 in all)
+                {
+                    if (frv2 != this && frv2.isMasterFRV2)
+                    {
+                        masterFRV2 = frv2;
+                        break;
+                    }
+                }
+            }
+
+            if (masterFRV2 != null)
+            {
+                masterFRV2.RegisterSlave(this);
+                Debug.Log($"[FreezeReplayV2] '{name}' registered as slave of '{masterFRV2.name}' (attempt {attempt + 1}).");
+                yield break;
+            }
+        }
+
+        Debug.LogWarning($"[FreezeReplayV2] '{name}' is a slave (isMasterFRV2=false) but found no master FRV2 in the scene after {maxRetries} attempts. " +
+                         "Ensure exactly one FRV2 has isMasterFRV2=true.");
+    }
+
+    /// <summary>
+    /// Called by slaves at startup to subscribe to master preview/commit events.
+    /// </summary>
+    public void RegisterSlave(FreezeReplayV2 slave)
+    {
+        if (slave != null && !registeredSlaves.Contains(slave))
+            registeredSlaves.Add(slave);
+    }
+
+    /// <summary>
+    /// Broadcasts a preview restart request to all registered slave FRV2s.
+    /// </summary>
+    private void BroadcastPreviewRestartToSlaves()
+    {
+        foreach (FreezeReplayV2 slave in registeredSlaves)
+        {
+            if (slave != null)
+                slave.RequestPosePreviewRestart();
+        }
+    }
+
+    /// <summary>
+    /// Broadcasts a CommitPose call to all registered slave FRV2s.
+    /// </summary>
+    private void BroadcastCommitToSlaves()
+    {
+        if (registeredSlaves.Count == 0)
+        {
+            Debug.LogWarning("[FreezeReplayV2] Master committed but has no registered slaves. " +
+                             "Ensure slave FRV2s have isMasterFRV2=false so they self-register.");
+            return;
+        }
+
+        foreach (FreezeReplayV2 slave in registeredSlaves)
+        {
+            if (slave == null) continue;
+
+            if (slave.currentPhase == TurnPhase.Posing)
+            {
+                slave.CommitPose();
+            }
+            else
+            {
+                Debug.LogWarning($"[FreezeReplayV2] Skipped CommitPose broadcast to '{slave.name}' — " +
+                                 $"slave is in phase {slave.currentPhase}, expected Posing.");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Triggers replay on all registered slave FRV2s simultaneously with the master.
+    /// </summary>
+    private void BroadcastReplayToSlaves()
+    {
+        foreach (FreezeReplayV2 slave in registeredSlaves)
+        {
+            if (slave != null)
+            {
+                slave.StopPosePreviewLoop(true, true);
+                slave.StartCoroutine(slave.PlayReplayThenResume());
+            }
+        }
+    }
+
     // ===== RAGDOLL SYSTEM (PHASE 1.3 & 1.4) =====
 
     /// <summary>
@@ -4837,6 +5129,8 @@ public class FreezeReplayV2 : MonoBehaviour
     public void ReapplyFighterGhostCollisionIgnores()
     {
         FreezeReplayV2[] allControllers = FindObjectsOfType<FreezeReplayV2>();
+
+        // Ignore collisions between every live fighter and every frozen copy
         foreach (var frSource in allControllers)
         {
             if (frSource == null || frSource.playerObj == null) continue;
@@ -4853,6 +5147,31 @@ public class FreezeReplayV2 : MonoBehaviour
                     {
                         if (liveCol != null && frozenCol != null)
                             Physics2D.IgnoreCollision(liveCol, frozenCol);
+                    }
+                }
+            }
+        }
+
+        // Ignore collisions between frozen copies themselves — ghosts should
+        // never physically interact with each other.
+        for (int i = 0; i < allControllers.Length; i++)
+        {
+            var frA = allControllers[i];
+            if (frA == null || frA.frozenCopy == null) continue;
+            Collider2D[] ghostCollidersA = frA.frozenCopy.GetComponentsInChildren<Collider2D>(true);
+
+            for (int j = i + 1; j < allControllers.Length; j++)
+            {
+                var frB = allControllers[j];
+                if (frB == null || frB.frozenCopy == null) continue;
+                Collider2D[] ghostCollidersB = frB.frozenCopy.GetComponentsInChildren<Collider2D>(true);
+
+                foreach (var colA in ghostCollidersA)
+                {
+                    foreach (var colB in ghostCollidersB)
+                    {
+                        if (colA != null && colB != null)
+                            Physics2D.IgnoreCollision(colA, colB);
                     }
                 }
             }

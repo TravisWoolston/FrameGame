@@ -131,6 +131,7 @@ public class SmartPoser : MonoBehaviour
         if (!enableSmartPosing) return;
         if (freezeReplay != null && freezeReplay.replaying) return;
         if (freezeReplayV2 != null && freezeReplayV2.currentPhase != FreezeReplayV2.TurnPhase.Posing) return;
+        if (freezeReplayV2 != null && !freezeReplayV2.enableEditInput) return;
 
         HandleHoverHighlight();
 

@@ -51,6 +51,9 @@ public class FighterHealth : MonoBehaviour
     [Tooltip("Color of the health bar background")]
     public Color backgroundColor = new Color(0.15f, 0.15f, 0.15f, 0.8f);
 
+    [Tooltip("Color of the preview (temporary) damage segment on the health bar")]
+    public Color previewDamageColor = new Color(1f, 0.85f, 0.1f, 0.85f);
+
     [Header("=== References ===")]
     [Tooltip("The transform to track for health bar positioning (e.g., Head or Spine)")]
     public Transform healthBarAnchor;
@@ -68,11 +71,16 @@ public class FighterHealth : MonoBehaviour
     private SpriteRenderer barBackground;
     private SpriteRenderer barFill;
     private SpriteRenderer barBorder;
+    private SpriteRenderer barPreviewDamage;
     private Transform barContainer;
 
     // Smooth health bar animation
     private float displayedHP;
     private float smoothVelocity;
+
+    // Preview damage — temporary damage taken during preview simulation.
+    // Visualised as a yellow segment on the health bar; cleared on RestoreHP().
+    private float previewDamageHP = 0f;
 
     void Awake()
     {
@@ -111,8 +119,10 @@ public class FighterHealth : MonoBehaviour
 
     /// <summary>
     /// Apply damage to this fighter. Called by ImpactDamage on individual limbs.
+    /// Pass isPreview = true during the preview loop so the damage is tracked
+    /// separately and shown as a yellow bar segment without persisting.
     /// </summary>
-    public void TakeDamage(float damage)
+    public void TakeDamage(float damage, bool isPreview = false)
     {
         if (!enableHealthSystem) return;
         if (IsKO) return;
@@ -120,12 +130,15 @@ public class FighterHealth : MonoBehaviour
         float finalDamage = damage * damageReduction;
         currentHP = Mathf.Max(0f, currentHP - finalDamage);
 
+        if (isPreview)
+            previewDamageHP = Mathf.Min(previewDamageHP + finalDamage, snapshotHP);
+
         OnDamageTaken?.Invoke(finalDamage, currentHP);
 
         if (enableDebugLog)
-            Debug.Log($"[FighterHealth] {gameObject.name} took {finalDamage:F1} damage. HP: {currentHP:F1}/{maxHP}");
+            Debug.Log($"[FighterHealth] {gameObject.name} took {finalDamage:F1} damage{(isPreview ? " (preview)" : "")}. HP: {currentHP:F1}/{maxHP}");
 
-        if (IsKO && enableKO)
+        if (IsKO && enableKO && !isPreview)
         {
             HandleKO();
         }
@@ -148,6 +161,7 @@ public class FighterHealth : MonoBehaviour
         currentHP = maxHP;
         displayedHP = maxHP;
         snapshotHP = maxHP;
+        previewDamageHP = 0f;
     }
 
     // ===== Snapshot Integration (for FreezeReplay) =====
@@ -169,6 +183,7 @@ public class FighterHealth : MonoBehaviour
     {
         currentHP = snapshotHP;
         displayedHP = snapshotHP;
+        previewDamageHP = 0f;
     }
 
     void HandleKO()
@@ -204,6 +219,12 @@ public class FighterHealth : MonoBehaviour
         fillObj.transform.SetParent(barContainer);
         fillObj.transform.localScale = new Vector3(healthBarWidth, healthBarHeight, 1f);
 
+        // Preview damage segment (yellow), rendered on top of fill
+        GameObject previewObj = CreateBarSprite("HealthBar_Preview", previewDamageColor, 3);
+        barPreviewDamage = previewObj.GetComponent<SpriteRenderer>();
+        previewObj.transform.SetParent(barContainer);
+        previewObj.transform.localScale = new Vector3(0f, healthBarHeight, 1f);
+
         barContainer.gameObject.SetActive(showHealthBar);
     }
 
@@ -232,18 +253,50 @@ public class FighterHealth : MonoBehaviour
         barPos.z = -5f; // In front of everything
         barContainer.position = barPos;
 
-        // Update fill width based on displayed HP (smoothed)
+        // Displayed HP smoothly follows current HP (which is already restored on preview restart)
         float hpPercent = Mathf.Clamp01(displayedHP / maxHP);
+        float fillWidth = healthBarWidth * hpPercent;
+
+        // Main fill — represents committed HP
         Vector3 fillScale = barFill.transform.localScale;
-        fillScale.x = healthBarWidth * hpPercent;
+        fillScale.x = fillWidth;
         barFill.transform.localScale = fillScale;
 
         // Offset fill so it drains from the right
-        float xOffset = -(healthBarWidth - fillScale.x) * 0.5f;
+        float xOffset = -(healthBarWidth - fillWidth) * 0.5f;
         barFill.transform.localPosition = new Vector3(xOffset, 0f, 0f);
 
         // Lerp color from green to red
         barFill.color = Color.Lerp(lowHealthColor, fullHealthColor, hpPercent);
+
+        // Preview damage segment — yellow strip sitting immediately to the right of the fill's right edge,
+        // representing damage accumulated during the preview loop that will be cleared on RestoreHP.
+        if (barPreviewDamage != null)
+        {
+            float clampedPreview = Mathf.Clamp(previewDamageHP, 0f, displayedHP);
+            float previewPercent = clampedPreview / maxHP;
+            float previewWidth = healthBarWidth * previewPercent;
+
+            if (previewWidth > 0.001f)
+            {
+                barPreviewDamage.gameObject.SetActive(true);
+
+                // The preview strip replaces the rightmost portion of the fill.
+                // Its right edge aligns with the fill's right edge.
+                Vector3 pvScale = barPreviewDamage.transform.localScale;
+                pvScale.x = previewWidth;
+                barPreviewDamage.transform.localScale = pvScale;
+
+                // Centre of the preview strip: fill right edge minus half preview width
+                float fillRightEdge = xOffset + fillWidth * 0.5f;
+                float previewCentre = fillRightEdge - previewWidth * 0.5f;
+                barPreviewDamage.transform.localPosition = new Vector3(previewCentre, 0f, 0f);
+            }
+            else
+            {
+                barPreviewDamage.gameObject.SetActive(false);
+            }
+        }
     }
 
     void OnDestroy()

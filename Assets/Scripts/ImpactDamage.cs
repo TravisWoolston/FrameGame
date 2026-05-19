@@ -158,6 +158,24 @@ public class ImpactDamage : MonoBehaviour
         LimbMoveIntent attackerIntent = otherLimb.GetComponent<LimbMoveIntent>();
         LimbMoveIntent defenderIntent = GetComponent<LimbMoveIntent>();
 
+        // Basic/Block limbs cannot inflict damage — they can only receive it.
+        if (attackerIntent != null && attackerIntent.mode == LimbMoveIntent.MoveMode.BasicBlock)
+            return;
+
+        // If the other limb is an active striker, THIS limb is the defender.
+        // If THIS limb is an active striker hitting a non-striking limb, skip —
+        // the collision will be processed on the defender's side instead, preventing
+        // the striker from also taking damage from its own impact event.
+        bool otherIsStriking = attackerIntent != null && attackerIntent.IsActiveStrike;
+        bool selfIsStriking  = defenderIntent != null && defenderIntent.IsActiveStrike;
+
+        if (selfIsStriking && !otherIsStriking)
+            return; // Let the defender's OnCollisionEnter2D handle this hit
+
+        // One-hit gate: a strike may only register damage once per turn.
+        if (otherIsStriking && !attackerIntent.TryConsumeStrikeHit())
+            return;
+
         // Calculate damage from physics
         float relativeSpeed = collision.relativeVelocity.magnitude;
         if (relativeSpeed < velocityThreshold) return;
@@ -172,57 +190,50 @@ public class ImpactDamage : MonoBehaviour
 
         lastDamageTime = Time.time;
 
-        ApplyStrikeImpulse(collision, attackerIntent);
-
-        // Phase 1.2: Soften joints temporarily on collision (Hit Reaction)
-        PoseDriver selfPd = GetComponent<PoseDriver>();
-        if (selfPd != null)
+        // Strike impact impulse: apply the attacker's configured knockback force
+        // directly to the struck limb's rigidbody. This produces immediate visible
+        // recoil at the point of contact, separate from the hit stun root push.
+        if (attackerIntent != null && attackerIntent.OutgoingImpulse > 0f && rb != null)
         {
-            float intensity = Mathf.Clamp(finalDamage / 20f, 0.2f, 0.95f);
-            float duration = Mathf.Clamp(finalDamage * 0.01f, 0.1f, 0.4f);
-            selfPd.ApplyHitReaction(duration, 1f - intensity);
+            Vector2 hitDir = (collision.contactCount > 0)
+                ? ((Vector2)transform.position - collision.GetContact(0).point).normalized
+                : (otherLimb.transform.position.x < transform.position.x ? Vector2.right : Vector2.left);
+            rb.AddForce(hitDir * attackerIntent.OutgoingImpulse, ForceMode2D.Impulse);
         }
 
-        HingeJoint2D hj = GetComponent<HingeJoint2D>();
-        if (hj != null && hj.connectedBody != null)
+        // Hit reaction: soften joints on the struck limb chain for physical feedback.
+        ApplyHitReactionChain(finalDamage);
+
+        // Hit stun: unplant the defender, switch tethers to local space,
+        // and apply an impulse to the root body. Frozen copy stays untouched.
+        ApplyHitStun(collision, otherLimb, finalDamage);
+
+        if (suppressDamageEffects)
         {
-            PoseDriver parentPd = hj.connectedBody.GetComponent<PoseDriver>();
-            if (parentPd != null)
-            {
-                float intensity = Mathf.Clamp(finalDamage / 40f, 0.1f, 0.7f);
-                float duration = Mathf.Clamp(finalDamage * 0.008f, 0.08f, 0.3f);
-                parentPd.ApplyHitReaction(duration, 1f - intensity);
-            }
+            // Preview simulation — record the yellow health bar segment.
+            // Ragdoll remains suppressed so the fighter resets cleanly.
+            if (fighterHealth != null)
+                fighterHealth.TakeDamage(finalDamage, isPreview: true);
+            return;
         }
 
         // Phase 1.3: Trigger full ragdoll on high-damage impacts
         FreezeReplayV2 fr = GetOwnerController();
         if (fr != null && finalDamage >= fr.ragdollDamageThreshold)
-        {
             fr.TriggerRagdoll();
-        }
-
-        if (suppressDamageEffects)
-            return;
 
         // Apply damage to this fighter's health
         fighterHealth.TakeDamage(finalDamage);
 
         // Visual feedback
         if (showHitFlash)
-        {
             FlashColor(Color.red, 0.15f);
-        }
 
         if (showDamageNumbers)
-        {
             SpawnDamageNumber(collision.GetContact(0).point, finalDamage);
-        }
 
         if (enableScreenShake && finalDamage >= shakeThreshold)
-        {
             CameraShake(finalDamage);
-        }
 
         if (fighterHealth.enableDebugLog)
         {
@@ -230,6 +241,54 @@ public class ImpactDamage : MonoBehaviour
                       $"| speed={relativeSpeed:F1} mass={attackerMass:F1} " +
                       $"| raw={rawDamage:F1} final={finalDamage:F1} " +
                       $"| HP remaining={fighterHealth.CurrentHP:F1}");
+        }
+    }
+
+    /// <summary>
+    /// Applies hit reaction softening to this limb, its hinge parent, and the
+    /// defender's root body (hips). The root is the most visible target when
+    /// poseAssistOnlyRootAndUnjointedBodies is true.
+    /// </summary>
+    private void ApplyHitReactionChain(float finalDamage)
+    {
+        // Struck limb itself
+        PoseDriver selfPd = GetComponent<PoseDriver>();
+        if (selfPd != null)
+        {
+            float intensity = Mathf.Clamp(finalDamage / 20f, 0.2f, 0.95f);
+            float duration  = Mathf.Clamp(finalDamage * 0.01f, 0.1f, 0.4f);
+            selfPd.ApplyHitReaction(duration, 1f - intensity);
+        }
+
+        // Immediate hinge parent
+        HingeJoint2D hj = GetComponent<HingeJoint2D>();
+        if (hj != null && hj.connectedBody != null)
+        {
+            PoseDriver parentPd = hj.connectedBody.GetComponent<PoseDriver>();
+            if (parentPd != null)
+            {
+                float intensity = Mathf.Clamp(finalDamage / 40f, 0.1f, 0.7f);
+                float duration  = Mathf.Clamp(finalDamage * 0.008f, 0.08f, 0.3f);
+                parentPd.ApplyHitReaction(duration, 1f - intensity);
+            }
+        }
+
+        // Root body — walk up the transform hierarchy to find the FighterHealth
+        // root, then apply a strong reaction to every unjointed PoseDriver on it.
+        if (fighterHealth != null)
+        {
+            PoseDriver[] rootDrivers = fighterHealth.GetComponentsInChildren<PoseDriver>();
+            foreach (PoseDriver pd in rootDrivers)
+            {
+                if (pd == null) continue;
+                // Only target unjointed bodies (root, hips, spine) — those the
+                // pose assist system actually drives when the flag is on.
+                if (pd.GetComponent<HingeJoint2D>() != null) continue;
+
+                float intensity = Mathf.Clamp(finalDamage / 25f, 0.25f, 0.9f);
+                float duration  = Mathf.Clamp(finalDamage * 0.012f, 0.12f, 0.45f);
+                pd.ApplyHitReaction(duration, 1f - intensity);
+            }
         }
     }
 
@@ -244,26 +303,35 @@ public class ImpactDamage : MonoBehaviour
             ssRenderer.color = flashColor;
     }
 
-    void ApplyStrikeImpulse(Collision2D collision, LimbMoveIntent attackerIntent)
+    /// <summary>
+    /// Triggers the hit stun system on the defender's FreezeReplayV2 controller.
+    /// Unplants feet, switches tethers to local space, and applies a physics
+    /// impulse to the root body. The frozen copy is never modified.
+    /// </summary>
+    void ApplyHitStun(Collision2D collision, ImpactDamage attacker, float damage)
     {
-        if (attackerIntent == null || !attackerIntent.IsActiveStrike) return;
-        if (rb == null || attackerIntent.OutgoingImpulse <= 0f) return;
+        FreezeReplayV2 defenderFR = GetOwnerController();
+        if (defenderFR == null) return;
 
-        Rigidbody2D attackerRb = collision.gameObject.GetComponent<Rigidbody2D>();
+        // Direction: from attacker toward defender
+        Rigidbody2D attackerRb = attacker.rb;
         Vector2 attackerPos = attackerRb != null
             ? attackerRb.worldCenterOfMass
-            : (Vector2)collision.gameObject.transform.position;
-        Vector2 direction = rb.worldCenterOfMass - attackerPos;
+            : (Vector2)attacker.transform.position;
+
+        Vector2 direction = rb != null
+            ? rb.worldCenterOfMass - attackerPos
+            : (Vector2)transform.position - attackerPos;
 
         if (direction.sqrMagnitude < 0.001f && collision.contactCount > 0)
-            direction = rb.worldCenterOfMass - collision.GetContact(0).point;
+            direction = (Vector2)transform.position - collision.GetContact(0).point;
 
         if (direction.sqrMagnitude < 0.001f)
             direction = collision.relativeVelocity;
 
         if (direction.sqrMagnitude < 0.001f) return;
 
-        rb.AddForce(direction.normalized * attackerIntent.OutgoingImpulse, ForceMode2D.Impulse);
+        defenderFR.ApplyHitStun(direction.normalized, damage);
     }
 
     void RestoreColor()
