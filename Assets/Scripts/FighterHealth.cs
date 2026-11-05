@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 /// <summary>
 /// Health system for a FreezReplay fighter.
@@ -186,6 +187,17 @@ public class FighterHealth : MonoBehaviour
         previewDamageHP = 0f;
     }
 
+    /// <summary>
+    /// Set HP to an exact value without triggering damage events or KO.
+    /// Used during replay playback to mirror recorded health states.
+    /// </summary>
+    public void SetDisplayHP(float hp)
+    {
+        currentHP = Mathf.Clamp(hp, 0f, maxHP);
+        displayedHP = currentHP;
+        previewDamageHP = 0f;
+    }
+
     void HandleKO()
     {
         Debug.Log($"[FighterHealth] {gameObject.name} has been KNOCKED OUT!");
@@ -197,6 +209,52 @@ public class FighterHealth : MonoBehaviour
         {
             joint.useMotor = false;
         }
+
+        // Make the corpse non-interactive with all living fighters while
+        // keeping ground/arena collision intact so the body rests on the floor.
+        IgnoreCollisionsWithAllFighters();
+    }
+
+    /// <summary>
+    /// Tells the 2D physics engine to ignore collisions between every collider
+    /// on this (dead) fighter and every collider on all other fighters in the scene.
+    /// Also ignores collisions with frozen copies owned by any FreezeReplayV2.
+    /// Ground/arena collisions are unaffected because those are separate colliders.
+    /// </summary>
+    private void IgnoreCollisionsWithAllFighters()
+    {
+        Collider2D[] myColliders = GetComponentsInChildren<Collider2D>(true);
+        if (myColliders.Length == 0) return;
+
+        // Collect every fighter-related collider in the scene (live fighters + frozen copies)
+        List<Collider2D> otherColliders = new List<Collider2D>();
+
+        FighterHealth[] allFighters = FindObjectsByType<FighterHealth>(FindObjectsSortMode.None);
+        foreach (FighterHealth other in allFighters)
+        {
+            if (other == null || other == this) continue;
+            otherColliders.AddRange(other.GetComponentsInChildren<Collider2D>(true));
+        }
+
+        // Also include frozen copies — they can become dynamic during physics pose edits
+        FreezeReplayV2[] allFRV2 = FindObjectsByType<FreezeReplayV2>(FindObjectsSortMode.None);
+        foreach (FreezeReplayV2 frv2 in allFRV2)
+        {
+            if (frv2 == null || frv2.frozenCopy == null) continue;
+            otherColliders.AddRange(frv2.frozenCopy.GetComponentsInChildren<Collider2D>(true));
+        }
+
+        foreach (Collider2D mine in myColliders)
+        {
+            if (mine == null) continue;
+            foreach (Collider2D theirs in otherColliders)
+            {
+                if (theirs == null) continue;
+                Physics2D.IgnoreCollision(mine, theirs, true);
+            }
+        }
+
+        Debug.Log($"[FighterHealth] Corpse '{gameObject.name}' now ignores collisions with all fighters and frozen copies.");
     }
 
     // ===== Health Bar Rendering =====

@@ -155,6 +155,11 @@ public class ImpactDamage : MonoBehaviour
         if (otherLimb.fighterHealth == this.fighterHealth) return;
         if (fighterHealth == null && !suppressDamageEffects) return;
 
+        // Skip all damage interactions involving a dead fighter —
+        // corpses neither deal nor receive damage.
+        if (fighterHealth != null && fighterHealth.IsKO) return;
+        if (otherLimb.fighterHealth != null && otherLimb.fighterHealth.IsKO) return;
+
         LimbMoveIntent attackerIntent = otherLimb.GetComponent<LimbMoveIntent>();
         LimbMoveIntent defenderIntent = GetComponent<LimbMoveIntent>();
 

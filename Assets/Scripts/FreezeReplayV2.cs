@@ -207,6 +207,7 @@ public class FreezeReplayV2 : MonoBehaviour
     [Tooltip("Damage threshold to trigger full ragdoll for the rest of the turn.")]
     public float ragdollDamageThreshold = 25f;
     [HideInInspector] public bool isRagdolled = false;
+    [HideInInspector] public bool ragdollRecovered = false;
 
     private Dictionary<Collider2D, PhysicsMaterial2D> originalMaterials = new Dictionary<Collider2D, PhysicsMaterial2D>();
     private PhysicsMaterial2D ragdollMaterial;
@@ -378,6 +379,9 @@ public class FreezeReplayV2 : MonoBehaviour
 
     // Frame-by-frame recording for replay
     private List<BodySnapshot[]> replayFrames = new List<BodySnapshot[]>();
+
+    // Per-frame HP recording for health bar replay (parallel to replayFrames)
+    private List<float> replayFrameHP = new List<float>();
 
     // Frozen copy children (matched 1:1 with trackedBodies by index)
     private Transform[] frozenChildren;
@@ -560,18 +564,26 @@ public class FreezeReplayV2 : MonoBehaviour
             || (currentPhase == TurnPhase.Posing && posePreviewLoopRunning);
         if (!shouldDrivePhysics) return;
 
-        if (isRagdolled)
+        if (isRagdolled && !ragdollRecovered)
         {
-            // Full ragdoll: disable all PoseDrivers, release all tethers/plants, and let raw physics take over
-            foreach (var plan in limbPlans)
-            {
-                if (plan != null && plan.poseDriver != null)
-                    plan.poseDriver.enablePoseDriver = false;
-            }
+            // Full ragdoll: disable all PoseDrivers AND motors, release all
+            // tethers/plants, and let raw physics take over.
+            // But DON'T return early — we still need to record frames and advance the preview/sim timer
+            // so the ragdolled fighter stays in the replay and the turn completes normally.
+            DisablePoseDriversAndMotors();
             ClearPlantedFootJoints();
             ClearReplantingFootJoints();
             ClearPoseTethers();
-            return;
+
+            // Check if a ragdolled fighter with HP remaining has landed — if so, recover
+            if (fighterHealth != null && !fighterHealth.IsKO)
+            {
+                CheckRagdollRecovery();
+            }
+
+            // If still ragdolled (not recovered), skip all physics assist but continue to recording
+            if (!ragdollRecovered)
+                goto SimAdvance;
         }
 
         // Jump has two phases:
@@ -581,6 +593,18 @@ public class FreezeReplayV2 : MonoBehaviour
         //   Only PoseDrivers (with root rotation compensation) keep body form.
         bool isPostJumpAirborne = forceAirborneMode || (jumpTriggerArmed && hasJumpTriggered);
         bool isPurePhysicsMode = isPostJumpAirborne;
+
+        // Distinguish intentional jumps from ragdoll/hit-stun launches.
+        // Jumps keep PoseDrivers active to maintain pose mid-air.
+        // Ragdoll recovery and hit-stun launches disable PoseDrivers AND motors
+        // for full ragdoll behaviour — the fighter tumbles freely until landing.
+        bool isIntentionalJump = jumpTriggerArmed && hasJumpTriggered;
+        bool isLaunchedRagdoll = forceAirborneMode && !isIntentionalJump;
+
+        if (isLaunchedRagdoll && !hasLandedThisTurn)
+        {
+            DisablePoseDriversAndMotors();
+        }
 
         // Airborne root rotation compensation:
         // When the live root (hips) rotates under gravity but the frozen copy's root
@@ -629,6 +653,7 @@ public class FreezeReplayV2 : MonoBehaviour
         
         CheckReplantingFootArrival();
 
+    SimAdvance:
         if (!isCommittedSimulation)
         {
             AdvancePosePreviewFixedStep();
@@ -723,7 +748,16 @@ public class FreezeReplayV2 : MonoBehaviour
         // Freeze the live fighter, show frozen copy, return to posing
         FreezeLiveBodies();
         currentPhase = TurnPhase.Posing;
-        ShowFrozenCopy();
+
+        // Only show the frozen copy if the fighter is grounded.
+        // When forceAirborneMode is active (post-ragdoll, mid-air), hide the
+        // frozen copy so no grounded ghost appears while the live fighter is
+        // still airborne. It will be shown once the fighter lands and a new
+        // grounded snapshot is captured.
+        if (!forceAirborneMode)
+            ShowFrozenCopy();
+        else
+            HideFrozenCopy();
 
         Debug.Log($"[FreezeReplayV2] Turn {turnCount} complete. Pose next move.");
     }
@@ -1115,6 +1149,10 @@ public class FreezeReplayV2 : MonoBehaviour
             return;
 
         replayFrames.Add(frame);
+
+        // Record HP alongside the frame so the health bar can track during replay
+        float frameHP = (enableHealthSnapshots && fighterHealth != null) ? fighterHealth.CurrentHP : -1f;
+        replayFrameHP.Add(frameHP);
     }
 
     private bool IsDuplicateReplayFrame(BodySnapshot[] frame)
@@ -1150,10 +1188,15 @@ public class FreezeReplayV2 : MonoBehaviour
             yield break;
         }
 
-        // Reset health bar to committed HP before replay so the bar is clean
-        // (clears any lingering preview-damage yellow segment).
+        // Reset health bar to the state at the very first recorded frame
+        // so the bar starts clean and drains in sync with the replay.
         if (enableHealthSnapshots && fighterHealth != null)
-            fighterHealth.RestoreHP();
+        {
+            if (replayFrameHP.Count > 0 && replayFrameHP[0] >= 0f)
+                fighterHealth.SetDisplayHP(replayFrameHP[0]);
+            else
+                fighterHealth.RestoreHP();
+        }
 
         // Pause normal update
         isPlayingReplay = true;
@@ -1199,6 +1242,13 @@ public class FreezeReplayV2 : MonoBehaviour
                 rb.transform.rotation = Quaternion.Euler(0, 0, frame[i].rotation);
             }
 
+            // Update health bar to match the recorded HP for this frame
+            if (enableHealthSnapshots && fighterHealth != null
+                && frameIndex < replayFrameHP.Count && replayFrameHP[frameIndex] >= 0f)
+            {
+                fighterHealth.SetDisplayHP(replayFrameHP[frameIndex]);
+            }
+
             if (frameIndex >= replayFrames.Count - 1)
                 continue;
 
@@ -1216,6 +1266,10 @@ public class FreezeReplayV2 : MonoBehaviour
         }
 
         isPlayingReplay = false;
+
+        // Restore health bar to the current committed HP (end of all recorded turns)
+        if (enableHealthSnapshots && fighterHealth != null)
+            fighterHealth.RestoreHP();
         
         // Ensure we freeze again if we return to posing phase
         if (currentPhase == TurnPhase.Posing)
@@ -1859,6 +1913,29 @@ public class FreezeReplayV2 : MonoBehaviour
         ClearPlantedFootJoints();
         ClearReplantingFootJoints();
         RefreshFrozenIntentTints();
+
+        // If the fighter was ragdolled this turn and hasn't landed yet,
+        // carry airborne mode into the next turn so grounding logic doesn't
+        // snap them to the floor before physics has a chance to settle.
+        if (isRagdolled && !hasLandedThisTurn)
+        {
+            forceAirborneMode = true;
+            Debug.Log("[FreezeReplayV2] Fighter still airborne after ragdoll — keeping forceAirborneMode for next turn.");
+        }
+
+        // Also detect fighters launched into the air via hit stun impulse
+        // without triggering full ragdoll. Only check if a hit stun occurred
+        // this turn (hitStunLocalTethers is set by ApplyHitStun and persists
+        // until ClearHitStun). If the root body is well above normal standing
+        // height at the end of the turn, treat them as airborne next turn.
+        if (!forceAirborneMode && !hasLandedThisTurn && !isRagdolled && hitStunLocalTethers)
+        {
+            if (IsFighterAirborne())
+            {
+                forceAirborneMode = true;
+                Debug.Log("[FreezeReplayV2] Fighter airborne at end of turn (hit stun launch) — setting forceAirborneMode for next turn.");
+            }
+        }
 
         ResetRagdollState();
     }
@@ -3529,6 +3606,12 @@ public class FreezeReplayV2 : MonoBehaviour
         // Prevents immediate re-trigger right after the jump impulse.
         if (liveRoot.linearVelocity.y > 0.5f) return;
 
+        // Don't lock feet down while the fighter is still sliding/tumbling
+        // at high speed — let physics settle first so they aren't abruptly
+        // pinned to the floor mid-slide.
+        const float landingSpeedThreshold = 4f;
+        if (liveRoot.linearVelocity.magnitude > landingSpeedThreshold) return;
+
         bool anyFootLanded = false;
 
         foreach (var plan in limbPlans)
@@ -3571,6 +3654,35 @@ public class FreezeReplayV2 : MonoBehaviour
         {
             hasLandedThisTurn = true;
         }
+    }
+
+    /// <summary>
+    /// Checks whether the fighter's root body is significantly above the ground,
+    /// indicating it was launched into the air (e.g. by hit stun impulse).
+    /// Uses the same ground raycast as the walking system.
+    /// </summary>
+    private bool IsFighterAirborne()
+    {
+        if (rootBodyIndex < 0 || rootBodyIndex >= trackedBodies.Count) return false;
+
+        Rigidbody2D liveRoot = trackedBodies[rootBodyIndex];
+        if (liveRoot == null) return false;
+
+        // Probe downward from the root to find the ground.
+        float maxProbe = walkMaxHipGroundDistance * 2.5f;
+        Vector2 probeOrigin = liveRoot.position;
+        RaycastHit2D hit = Physics2D.Raycast(probeOrigin, Vector2.down, maxProbe, groundMask);
+
+        // No ground within probe range — clearly airborne
+        if (hit.collider == null) return true;
+
+        // Ground found but root is significantly above normal standing height.
+        // Normal standing puts the hip at roughly walkMaxHipGroundDistance above
+        // the ground. Use 1.3x that as the threshold so only clearly launched
+        // fighters are detected, not normally standing ones.
+        float distanceToGround = hit.distance;
+        float airborneThreshold = walkMaxHipGroundDistance * 1.3f;
+        return distanceToGround > airborneThreshold;
     }
 
     /// <summary>
@@ -4186,6 +4298,15 @@ public class FreezeReplayV2 : MonoBehaviour
     private void ShowFrozenCopy()
     {
         if (frozenCopy == null) return;
+
+        // Never show the frozen copy for a dead fighter — the corpse stays
+        // as-is on the ground with no planning ghost.
+        if (fighterHealth != null && fighterHealth.IsKO)
+        {
+            HideFrozenCopy();
+            return;
+        }
+
         frozenCopy.SetActive(true); // Ensure active
         SetFrozenCopyBodyType(frozenPhysicsPoseEditActive ? RigidbodyType2D.Dynamic : RigidbodyType2D.Kinematic);
         SetFrozenCopyCollidersEnabled(true);
@@ -5048,6 +5169,52 @@ public class FreezeReplayV2 : MonoBehaviour
     // ===== RAGDOLL SYSTEM (PHASE 1.3 & 1.4) =====
 
     /// <summary>
+    /// Disables all PoseDrivers AND kills the HingeJoint2D motors so limbs
+    /// go fully limp. Simply setting enablePoseDriver = false only stops
+    /// the PD controller from updating — the motor retains its last speed
+    /// and torque, causing windmill spinning.
+    /// </summary>
+    private void DisablePoseDriversAndMotors()
+    {
+        foreach (var plan in limbPlans)
+        {
+            if (plan == null) continue;
+
+            if (plan.poseDriver != null)
+                plan.poseDriver.enablePoseDriver = false;
+
+            if (plan.liveBody != null)
+            {
+                HingeJoint2D joint = plan.liveBody.GetComponent<HingeJoint2D>();
+                if (joint != null)
+                    joint.useMotor = false;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Re-enables PoseDrivers and their HingeJoint2D motors so joints
+    /// resume chasing frozen copy angles.
+    /// </summary>
+    private void EnablePoseDriversAndMotors()
+    {
+        foreach (var plan in limbPlans)
+        {
+            if (plan == null) continue;
+
+            if (plan.poseDriver != null)
+                plan.poseDriver.enablePoseDriver = true;
+
+            if (plan.liveBody != null)
+            {
+                HingeJoint2D joint = plan.liveBody.GetComponent<HingeJoint2D>();
+                if (joint != null)
+                    joint.useMotor = true;
+            }
+        }
+    }
+
+    /// <summary>
     /// Trigger full ragdoll for the live fighter, letting raw physics take over
     /// and applying a high-friction material for floor tumbling.
     /// </summary>
@@ -5056,11 +5223,7 @@ public class FreezeReplayV2 : MonoBehaviour
         if (isRagdolled) return;
         isRagdolled = true;
 
-        foreach (var plan in limbPlans)
-        {
-            if (plan != null && plan.poseDriver != null)
-                plan.poseDriver.enablePoseDriver = false;
-        }
+        DisablePoseDriversAndMotors();
 
         ClearPlantedFootJoints();
         ClearReplantingFootJoints();
@@ -5079,15 +5242,84 @@ public class FreezeReplayV2 : MonoBehaviour
     {
         if (!isRagdolled) return;
         isRagdolled = false;
+        ragdollRecovered = false;
 
-        foreach (var plan in limbPlans)
-        {
-            if (plan != null && plan.poseDriver != null)
-                plan.poseDriver.enablePoseDriver = true;
-        }
+        EnablePoseDriversAndMotors();
 
         RestoreOriginalPhysicsMaterials();
         Debug.Log("[FreezeReplayV2] Ragdoll state reset, PoseDrivers re-enabled.");
+    }
+
+    /// <summary>
+    /// Checks if a ragdolled fighter with remaining HP has feet touching the ground.
+    /// On landing, transitions to an airborne-style recovery: re-enables PoseDrivers
+    /// with root rotation compensation and plants feet via CheckAirborneLanding logic.
+    /// The fighter's hip target is NOT updated until fully grounded.
+    /// </summary>
+    private void CheckRagdollRecovery()
+    {
+        if (!isRagdolled || ragdollRecovered) return;
+        if (trackedBodies == null || rootBodyIndex < 0 || rootBodyIndex >= trackedBodies.Count) return;
+
+        Rigidbody2D liveRoot = trackedBodies[rootBodyIndex];
+        if (liveRoot == null) return;
+
+        // Only attempt recovery when root is moving downward (has started falling)
+        if (liveRoot.linearVelocity.y > 0.5f) return;
+
+        // Wait until the fighter has slowed down enough — don't recover while
+        // still tumbling or sliding across the ground at speed.
+        const float recoverySpeedThreshold = 4f;
+        if (liveRoot.linearVelocity.magnitude > recoverySpeedThreshold) return;
+
+        // Check if any foot is near the ground
+        bool anyFootNearGround = false;
+        foreach (var plan in limbPlans)
+        {
+            if (plan == null || plan.liveBody == null) continue;
+            if (!IsFootLimb(plan.liveBody.name) && !IsLowerLeg(plan.liveBody.name)) continue;
+
+            Vector2 probeOrigin = plan.liveBody.position + Vector2.up * 0.15f;
+            float probeDistance = footGroundOffset + 0.5f;
+            RaycastHit2D hit = Physics2D.Raycast(probeOrigin, Vector2.down, probeDistance, groundMask);
+            if (hit.collider != null)
+            {
+                anyFootNearGround = true;
+                break;
+            }
+        }
+
+        if (!anyFootNearGround) return;
+
+        // Recover: transition to airborne-style local joints until fully landed
+        ragdollRecovered = true;
+        RestoreOriginalPhysicsMaterials();
+
+        // PoseDrivers and motors stay DISABLED — the isLaunchedRagdoll path
+        // in FixedUpdate keeps them off until hasLandedThisTurn is set.
+        // Re-enabling happens naturally once CheckAirborneLanding detects ground.
+
+        // Enable airborne mode so the existing landing system takes over:
+        // - local-space tethers keep the body coherent
+        // - CheckAirborneLanding plants feet as they touch ground
+        // - no hip target updates until grounded
+        forceAirborneMode = true;
+        hasLandedThisTurn = false;
+
+        // Force legs out of Auto so they don't fight the recovery
+        foreach (var plan in limbPlans)
+        {
+            if (plan != null && plan.intent != null && IsLegLimb(plan.liveBody.name))
+            {
+                if (plan.intent.mode == LimbMoveIntent.MoveMode.Auto)
+                    plan.intent.mode = LimbMoveIntent.MoveMode.BasicBlock;
+            }
+        }
+
+        // Apply root rotation compensation for the PoseDrivers
+        UpdateAirborneRootRotationOffset(true);
+
+        Debug.Log("[FreezeReplayV2] Ragdoll recovery: feet near ground, transitioning to airborne landing.");
     }
 
     private void ApplyRagdollPhysicsMaterials()
