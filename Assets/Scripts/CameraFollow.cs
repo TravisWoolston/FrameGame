@@ -42,24 +42,6 @@ public class CameraFollow : MonoBehaviour
         }
     }
 
-    Transform FindBestAgent()
-    {
-        StickFigureAgentv2[] agents = FindObjectsOfType<StickFigureAgentv2>();
-        Transform bestAgent = null;
-        highScore = -999;
-        foreach (var agent in agents)
-        {
-            float agentScore = agent.GetTotalReward(); // Assuming you have a method to get the agent's total reward
-            if (agentScore > highScore)
-            {
-                highScore = agentScore;
-                bestAgent = agent.transform;
-            }
-        }
-
-        return bestAgent;
-    }
-
     public void CenterOnSnapshot(Vector2 snapshotPosition)
     {
         holdSnapshotCenter = true;

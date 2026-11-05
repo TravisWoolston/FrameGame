@@ -102,38 +102,8 @@ public class FreezeReplay : MonoBehaviour
             // playerObj.transform.rotation = newRotation;
         }
 
-        if (playerObj.name == "FighterAgent(Clone)")
-        {
-            StickFigureAgentv2 sfa = playerObj.GetComponent<StickFigureAgentv2>();
-            sfa.fr = this;
-            sfa.EnableGUI(gameObject.name);
-            if (marker)
-            {
-                Debug.Log("marker 1 set");
-                sfa.marker = marker.transform;
-            }
-            if (target){
-                Debug.Log("marker 2 set");
-                sfa.target = target.transform;
-
-            }
-            sfa.copy = frozenCopy;
-
-        }
-        else {
-            
-            if(makeAgentCopies){
-                int j = 0;
-                target = playerObj;
-                foreach(GameObject agent in agentObjs){
-                    StickFigureAgentv2 sfa = agent.GetComponent<StickFigureAgentv2>();
-                    sfa.fr = this;
-                sfa.target = playerObj.transform;
-                sfa.copy = agentCopies[j];
-                }
-                
-            }
-        }
+        if (makeAgentCopies)
+            target = playerObj;
         AutoAddRigidbodies(playerObj);
 
         // Tell GameStateReplay to only track THIS fighter's bodies (not all in scene)

@@ -21,7 +21,6 @@ public class RotateHingeJoint : MonoBehaviour
     public float lastInput = 0;
     public float targetRotationRef = 0;
     public Rigidbody2D rb;
-    public StickFigureAgentv2 sfa;
     public bool useLimits = false;
     public float min = 0;
         public float max = 0;
